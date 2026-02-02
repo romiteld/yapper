@@ -1,0 +1,12 @@
+{
+    "api_key": "YOUR_OPENAI_API_KEY_HERE",
+    "hotkey": "f8",
+    "audio_device_index": null,
+    "audio_feedback": true,
+    "language_hint": "",
+    "translate_to": "",
+    "fix_grammar": true,
+    "vad_enabled": true,
+    "vad_threshold_db": -45,
+    "save_history": true
+}

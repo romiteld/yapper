@@ -1,0 +1,6 @@
+# Custom sound files (WAV format)
+# Place your custom sounds here:
+#   start.wav   - Played when recording starts
+#   stop.wav    - Played when recording stops
+#   success.wav - Played on successful transcription
+#   error.wav   - Played on error
