@@ -441,43 +441,71 @@ class YapperTray:
                 logger.error(f"Error updating icon: {e}")
 
     def show_notification(self, title: str, message: str):
-        """Show a system notification with Yapper branding and icon."""
+        """Show a custom pink notification with white text."""
         try:
             if platform.system() == "Windows":
                 import subprocess
-                # Get absolute path to icon PNG (more reliable for toasts)
-                icon_path = str(ICON_PNG).replace("\\", "\\\\")
+                icon_path = str(ICON_PNG).replace("\\", "/")
 
-                # Use ToastGeneric template with app logo for icon display
+                # Custom Windows Forms notification - pink background, white text
                 ps_script = f'''
-                [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
-                [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom, ContentType = WindowsRuntime] | Out-Null
-                $template = @"
-                <toast>
-                    <visual>
-                        <binding template="ToastGeneric">
-                            <image placement="appLogoOverride" src="{icon_path}" hint-crop="circle"/>
-                            <text>{title}</text>
-                            <text>{message}</text>
-                        </binding>
-                    </visual>
-                </toast>
-"@
-                $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
-                $xml.LoadXml($template)
-                $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
-                [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("Yapper").Show($toast)
-                '''
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+$form = New-Object System.Windows.Forms.Form
+$form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::None
+$form.BackColor = [System.Drawing.Color]::FromArgb(233, 30, 140)
+$form.Size = New-Object System.Drawing.Size(340, 80)
+$form.StartPosition = [System.Windows.Forms.FormStartPosition]::Manual
+$form.TopMost = $true
+$form.ShowInTaskbar = $false
+
+$screen = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+$form.Location = New-Object System.Drawing.Point(($screen.Right - 350), ($screen.Bottom - 90))
+
+try {{
+    $icon = [System.Drawing.Image]::FromFile("{icon_path}")
+    $picBox = New-Object System.Windows.Forms.PictureBox
+    $picBox.Image = $icon
+    $picBox.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::Zoom
+    $picBox.Size = New-Object System.Drawing.Size(50, 50)
+    $picBox.Location = New-Object System.Drawing.Point(10, 15)
+    $form.Controls.Add($picBox)
+}} catch {{}}
+
+$titleLabel = New-Object System.Windows.Forms.Label
+$titleLabel.Text = "{title}"
+$titleLabel.ForeColor = [System.Drawing.Color]::White
+$titleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
+$titleLabel.AutoSize = $true
+$titleLabel.Location = New-Object System.Drawing.Point(70, 12)
+$form.Controls.Add($titleLabel)
+
+$msgLabel = New-Object System.Windows.Forms.Label
+$msgLabel.Text = "{message}"
+$msgLabel.ForeColor = [System.Drawing.Color]::White
+$msgLabel.Font = New-Object System.Drawing.Font("Segoe UI", 10)
+$msgLabel.AutoSize = $true
+$msgLabel.MaximumSize = New-Object System.Drawing.Size(250, 0)
+$msgLabel.Location = New-Object System.Drawing.Point(70, 38)
+$form.Controls.Add($msgLabel)
+
+$timer = New-Object System.Windows.Forms.Timer
+$timer.Interval = 3000
+$timer.Add_Tick({{ $form.Close() }})
+$timer.Start()
+
+$form.Add_Click({{ $form.Close() }})
+$form.ShowDialog() | Out-Null
+'''
                 subprocess.Popen(
                     ["powershell", "-WindowStyle", "Hidden", "-Command", ps_script],
                     creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0x08000000
                 )
             elif self.icon:
-                # Fallback for other platforms
                 self.icon.notify(message, title)
         except Exception as e:
             logger.error(f"Notification error: {e}")
-            # Fallback to pystray notification
             if self.icon:
                 try:
                     self.icon.notify(message, title)
@@ -642,8 +670,23 @@ class YapperTray:
             item('Grammar Correction', lambda: self.toggle_grammar(), checked=grammar_checked),
             item('Voice Activity Detection', lambda: self.toggle_vad(), checked=vad_checked),
             pystray.Menu.SEPARATOR,
+            item('View History', lambda: self.open_history()),
+            pystray.Menu.SEPARATOR,
             item('Exit', lambda: self.quit_app())
         )
+
+    def open_history(self):
+        """Open the transcription history folder."""
+        import subprocess
+        history_dir = APP_DIR.parent / "logs"
+        history_dir.mkdir(parents=True, exist_ok=True)
+
+        if platform.system() == "Windows":
+            subprocess.Popen(["explorer", str(history_dir)])
+        elif platform.system() == "Darwin":
+            subprocess.Popen(["open", str(history_dir)])
+        else:
+            subprocess.Popen(["xdg-open", str(history_dir)])
 
     def run(self):
         """Run the tray application."""
