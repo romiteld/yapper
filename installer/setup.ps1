@@ -40,7 +40,6 @@ $Border = [System.Drawing.Color]::FromArgb(50, 50, 60)
 
 # State
 $script:CurrentStep = 0
-$script:CreateDesktopShortcut = $true
 $script:StartWithWindows = $false
 $script:InstallPath = $InstallDir
 $script:ApiKey = ""
@@ -71,13 +70,16 @@ function New-CenteredLabel {
         [System.Drawing.FontStyle]$FontStyle = [System.Drawing.FontStyle]::Regular,
         [System.Drawing.Color]$Color = $TextSecondary,
         [System.Windows.Forms.Control]$Parent,
-        [int]$Width = 600
+        [int]$Width = 600,
+        [int]$Height = 0
     )
     $label = New-Object System.Windows.Forms.Label
     $label.Text = $Text
     $label.Font = New-Object System.Drawing.Font("Segoe UI", $FontSize, $FontStyle)
     $label.ForeColor = $Color
-    $label.Size = New-Object System.Drawing.Size($Width, ([int]($FontSize * 2.5)))
+    # Calculate height: use provided height or auto-calculate with more padding
+    $labelHeight = if ($Height -gt 0) { $Height } else { [Math]::Max(35, [int]($FontSize * 3)) }
+    $label.Size = New-Object System.Drawing.Size($Width, $labelHeight)
     $label.Location = New-Object System.Drawing.Point(([int]((650 - $Width) / 2)), $Y)
     $label.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
     $Parent.Controls.Add($label)
@@ -126,10 +128,10 @@ $logoPanel.Add_Paint({
 })
 
 # Welcome title - centered
-$welcomeTitle = New-CenteredLabel -Text "Welcome to Yapper" -Y 170 -FontSize 28 -FontStyle Bold -Color $TextPrimary -Parent $welcomePanel
+$welcomeTitle = New-CenteredLabel -Text "Welcome to Yapper" -Y 165 -FontSize 28 -FontStyle Bold -Color $TextPrimary -Parent $welcomePanel -Height 70
 
 # Welcome subtitle - centered
-$welcomeSubtitle = New-CenteredLabel -Text "Speech-to-Text powered by AI" -Y 220 -FontSize 13 -Color $TextSecondary -Parent $welcomePanel
+$welcomeSubtitle = New-CenteredLabel -Text "Speech-to-Text powered by AI" -Y 235 -FontSize 14 -Color $TextSecondary -Parent $welcomePanel -Height 40
 
 # Divider
 $divider = New-Object System.Windows.Forms.Panel
@@ -206,11 +208,10 @@ $keyIcon.Add_Paint({
 })
 
 # API title
-$apiTitle = New-CenteredLabel -Text "Enter Your API Key" -Y 150 -FontSize 24 -FontStyle Bold -Color $TextPrimary -Parent $apiPanel
+$apiTitle = New-CenteredLabel -Text "Enter Your API Key" -Y 150 -FontSize 24 -FontStyle Bold -Color $TextPrimary -Parent $apiPanel -Height 60
 
-# API description
-$apiDesc = New-CenteredLabel -Text "Yapper uses OpenAI's Whisper for transcription." -Y 200 -FontSize 11 -Color $TextSecondary -Parent $apiPanel
-$apiDesc2 = New-CenteredLabel -Text "Enter your API key below to enable speech-to-text." -Y 225 -FontSize 11 -Color $TextSecondary -Parent $apiPanel
+# API description (single line)
+$apiDesc = New-CenteredLabel -Text "Enter your API key below to enable speech-to-text." -Y 210 -FontSize 12 -Color $TextSecondary -Parent $apiPanel -Height 35
 
 # API Key label
 $apiKeyLabel = New-Object System.Windows.Forms.Label
@@ -218,13 +219,13 @@ $apiKeyLabel.Text = "OpenAI API Key"
 $apiKeyLabel.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
 $apiKeyLabel.ForeColor = $TextPrimary
 $apiKeyLabel.Size = New-Object System.Drawing.Size(150, 25)
-$apiKeyLabel.Location = New-Object System.Drawing.Point(100, 290)
+$apiKeyLabel.Location = New-Object System.Drawing.Point(100, 270)
 $apiPanel.Controls.Add($apiKeyLabel)
 
 # API Key textbox
 $apiKeyBox = New-Object System.Windows.Forms.TextBox
 $apiKeyBox.Size = New-Object System.Drawing.Size(450, 40)
-$apiKeyBox.Location = New-Object System.Drawing.Point(100, 320)
+$apiKeyBox.Location = New-Object System.Drawing.Point(100, 300)
 $apiKeyBox.Font = New-Object System.Drawing.Font("Consolas", 11)
 $apiKeyBox.BackColor = $BgInput
 $apiKeyBox.ForeColor = $TextPrimary
@@ -232,21 +233,13 @@ $apiKeyBox.BorderStyle = "FixedSingle"
 $apiKeyBox.Text = ""
 $apiPanel.Controls.Add($apiKeyBox)
 
-# Placeholder text behavior
-$apiKeyBox.Add_GotFocus({
-    if ($apiKeyBox.Text -eq "sk-...") {
-        $apiKeyBox.Text = ""
-        $apiKeyBox.ForeColor = $TextPrimary
-    }
-})
-
 # API Key hint
 $apiKeyHint = New-Object System.Windows.Forms.Label
 $apiKeyHint.Text = "Starts with 'sk-' - Your key is stored locally and never shared"
 $apiKeyHint.Font = New-Object System.Drawing.Font("Segoe UI", 9)
 $apiKeyHint.ForeColor = $TextMuted
-$apiKeyHint.Size = New-Object System.Drawing.Size(450, 20)
-$apiKeyHint.Location = New-Object System.Drawing.Point(100, 365)
+$apiKeyHint.Size = New-Object System.Drawing.Size(450, 25)
+$apiKeyHint.Location = New-Object System.Drawing.Point(100, 345)
 $apiPanel.Controls.Add($apiKeyHint)
 
 # Get API key link
@@ -256,13 +249,13 @@ $getKeyLink.Font = New-Object System.Drawing.Font("Segoe UI", 10)
 $getKeyLink.LinkColor = $PinkLight
 $getKeyLink.ActiveLinkColor = $Pink
 $getKeyLink.Size = New-Object System.Drawing.Size(300, 25)
-$getKeyLink.Location = New-Object System.Drawing.Point(175, 420)
+$getKeyLink.Location = New-Object System.Drawing.Point(175, 400)
 $getKeyLink.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
 $getKeyLink.Add_LinkClicked({ Start-Process "https://platform.openai.com/api-keys" })
 $apiPanel.Controls.Add($getKeyLink)
 
 # Skip note
-$skipNote = New-CenteredLabel -Text "You can also set this later in Settings" -Y 480 -FontSize 10 -Color $TextMuted -Parent $apiPanel
+$skipNote = New-CenteredLabel -Text "You can also set this later in Settings" -Y 460 -FontSize 10 -Color $TextMuted -Parent $apiPanel -Height 30
 
 # ---------- OPTIONS PANEL (Step 2) ----------
 $optionsPanel = New-Object System.Windows.Forms.Panel
@@ -273,7 +266,7 @@ $optionsPanel.Visible = $false
 $panelContainer.Controls.Add($optionsPanel)
 
 # Options title
-$optionsTitle = New-CenteredLabel -Text "Installation Options" -Y 40 -FontSize 24 -FontStyle Bold -Color $TextPrimary -Parent $optionsPanel
+$optionsTitle = New-CenteredLabel -Text "Installation Options" -Y 40 -FontSize 24 -FontStyle Bold -Color $TextPrimary -Parent $optionsPanel -Height 60
 
 # Install location section
 $locationLabel = New-Object System.Windows.Forms.Label
@@ -315,33 +308,13 @@ $browseBtn.Add_Click({
     }
 })
 
-# Shortcuts section
-$shortcutsLabel = New-Object System.Windows.Forms.Label
-$shortcutsLabel.Text = "Shortcuts"
-$shortcutsLabel.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
-$shortcutsLabel.ForeColor = $TextPrimary
-$shortcutsLabel.Size = New-Object System.Drawing.Size(200, 30)
-$shortcutsLabel.Location = New-Object System.Drawing.Point(100, 220)
-$optionsPanel.Controls.Add($shortcutsLabel)
-
-# Desktop shortcut checkbox
-$desktopCheck = New-Object System.Windows.Forms.CheckBox
-$desktopCheck.Text = "  Create Desktop shortcut"
-$desktopCheck.Font = New-Object System.Drawing.Font("Segoe UI", 11)
-$desktopCheck.ForeColor = $TextSecondary
-$desktopCheck.Size = New-Object System.Drawing.Size(350, 30)
-$desktopCheck.Location = New-Object System.Drawing.Point(100, 255)
-$desktopCheck.Checked = $true
-$desktopCheck.FlatStyle = "Flat"
-$optionsPanel.Controls.Add($desktopCheck)
-
 # Startup section
 $startupLabel = New-Object System.Windows.Forms.Label
 $startupLabel.Text = "Startup"
 $startupLabel.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
 $startupLabel.ForeColor = $TextPrimary
 $startupLabel.Size = New-Object System.Drawing.Size(200, 30)
-$startupLabel.Location = New-Object System.Drawing.Point(100, 320)
+$startupLabel.Location = New-Object System.Drawing.Point(100, 220)
 $optionsPanel.Controls.Add($startupLabel)
 
 # Start with Windows checkbox
@@ -350,7 +323,7 @@ $startupCheck.Text = "  Start Yapper with Windows (system tray)"
 $startupCheck.Font = New-Object System.Drawing.Font("Segoe UI", 11)
 $startupCheck.ForeColor = $TextSecondary
 $startupCheck.Size = New-Object System.Drawing.Size(400, 30)
-$startupCheck.Location = New-Object System.Drawing.Point(100, 355)
+$startupCheck.Location = New-Object System.Drawing.Point(100, 255)
 $startupCheck.Checked = $false
 $startupCheck.FlatStyle = "Flat"
 $optionsPanel.Controls.Add($startupCheck)
@@ -360,7 +333,7 @@ $startupNote.Text = "Yapper will run in the system tray when Windows starts.`nSa
 $startupNote.Font = New-Object System.Drawing.Font("Segoe UI", 9)
 $startupNote.ForeColor = $TextMuted
 $startupNote.Size = New-Object System.Drawing.Size(400, 45)
-$startupNote.Location = New-Object System.Drawing.Point(100, 390)
+$startupNote.Location = New-Object System.Drawing.Point(100, 290)
 $optionsPanel.Controls.Add($startupNote)
 
 # ---------- INSTALL PANEL (Step 3) ----------
@@ -372,22 +345,22 @@ $installPanel.Visible = $false
 $panelContainer.Controls.Add($installPanel)
 
 # Install title
-$installTitle = New-CenteredLabel -Text "Installing Yapper" -Y 40 -FontSize 24 -FontStyle Bold -Color $TextPrimary -Parent $installPanel
+$installTitle = New-CenteredLabel -Text "Installing Yapper" -Y 40 -FontSize 24 -FontStyle Bold -Color $TextPrimary -Parent $installPanel -Height 60
 
 # Status label
 $statusLabel = New-Object System.Windows.Forms.Label
 $statusLabel.Text = "Preparing installation..."
 $statusLabel.Font = New-Object System.Drawing.Font("Segoe UI", 12)
 $statusLabel.ForeColor = $TextSecondary
-$statusLabel.Size = New-Object System.Drawing.Size(500, 30)
-$statusLabel.Location = New-Object System.Drawing.Point(75, 90)
+$statusLabel.Size = New-Object System.Drawing.Size(500, 35)
+$statusLabel.Location = New-Object System.Drawing.Point(75, 100)
 $statusLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
 $installPanel.Controls.Add($statusLabel)
 
 # Progress bar background
 $progressBg = New-Object System.Windows.Forms.Panel
 $progressBg.Size = New-Object System.Drawing.Size(500, 10)
-$progressBg.Location = New-Object System.Drawing.Point(75, 135)
+$progressBg.Location = New-Object System.Drawing.Point(75, 145)
 $progressBg.BackColor = $BgCard
 $installPanel.Controls.Add($progressBg)
 
@@ -403,8 +376,8 @@ $detailLabel = New-Object System.Windows.Forms.Label
 $detailLabel.Text = ""
 $detailLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9)
 $detailLabel.ForeColor = $TextMuted
-$detailLabel.Size = New-Object System.Drawing.Size(500, 25)
-$detailLabel.Location = New-Object System.Drawing.Point(75, 155)
+$detailLabel.Size = New-Object System.Drawing.Size(500, 30)
+$detailLabel.Location = New-Object System.Drawing.Point(75, 165)
 $detailLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
 $installPanel.Controls.Add($detailLabel)
 
@@ -413,8 +386,8 @@ $logBox = New-Object System.Windows.Forms.TextBox
 $logBox.Multiline = $true
 $logBox.ScrollBars = "Vertical"
 $logBox.ReadOnly = $true
-$logBox.Size = New-Object System.Drawing.Size(500, 350)
-$logBox.Location = New-Object System.Drawing.Point(75, 195)
+$logBox.Size = New-Object System.Drawing.Size(500, 340)
+$logBox.Location = New-Object System.Drawing.Point(75, 200)
 $logBox.BackColor = [System.Drawing.Color]::FromArgb(12, 12, 16)
 $logBox.ForeColor = $TextSecondary
 $logBox.BorderStyle = "FixedSingle"
@@ -449,10 +422,10 @@ $successIcon.Add_Paint({
 })
 
 # Complete title
-$completeTitle = New-CenteredLabel -Text "Installation Complete!" -Y 200 -FontSize 26 -FontStyle Bold -Color $TextPrimary -Parent $completePanel
+$completeTitle = New-CenteredLabel -Text "Installation Complete!" -Y 195 -FontSize 26 -FontStyle Bold -Color $TextPrimary -Parent $completePanel -Height 65
 
 # Complete message
-$completeMsg = New-CenteredLabel -Text "Yapper has been installed successfully." -Y 250 -FontSize 12 -Color $TextSecondary -Parent $completePanel
+$completeMsg = New-CenteredLabel -Text "Yapper has been installed successfully." -Y 260 -FontSize 13 -Color $TextSecondary -Parent $completePanel -Height 40
 
 # Launch checkbox (centered)
 $launchCheck = New-Object System.Windows.Forms.CheckBox
@@ -572,18 +545,56 @@ function Show-Step {
 
 function Start-Installation {
     $script:InstallPath = $locationBox.Text
-    $script:CreateDesktopShortcut = $desktopCheck.Checked
     $script:StartWithWindows = $startupCheck.Checked
     $script:ApiKey = $apiKeyBox.Text.Trim()
 
     Show-Step 3
 
     try {
+        # Step 0: Stop any running Yapper processes
+        Update-Progress 2 "Preparing..." "Stopping any running Yapper instances"
+        Write-Log "Checking for running Yapper processes..."
+
+        # Kill Python processes running from the install path
+        Get-Process -Name "python*" -ErrorAction SilentlyContinue | Where-Object {
+            $_.Path -like "*$($script:InstallPath)*"
+        } | ForEach-Object {
+            Write-Log "Stopping process: $($_.Name) (PID: $($_.Id))"
+            Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
+        }
+
+        # Also try to kill any pythonw processes in the Yapper folder
+        Get-Process -ErrorAction SilentlyContinue | Where-Object {
+            $_.Path -like "*Yapper*python*"
+        } | ForEach-Object {
+            Write-Log "Stopping Yapper process: $($_.Name)"
+            Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
+        }
+
+        # Wait for processes to fully terminate
+        Start-Sleep -Seconds 2
+        Write-Log "Processes stopped" "success"
+
         # Step 1: Create directory
         Update-Progress 5 "Creating directories..." "Preparing installation folder"
         Write-Log "Creating installation directory..."
 
-        if (Test-Path $script:InstallPath) { Remove-Item $script:InstallPath -Recurse -Force -ErrorAction SilentlyContinue }
+        if (Test-Path $script:InstallPath) {
+            Write-Log "Removing old installation..."
+            # Try multiple times if needed
+            $retries = 3
+            for ($i = 0; $i -lt $retries; $i++) {
+                try {
+                    Remove-Item $script:InstallPath -Recurse -Force -ErrorAction Stop
+                    break
+                } catch {
+                    if ($i -lt $retries - 1) {
+                        Write-Log "Retrying removal... (attempt $($i + 2))"
+                        Start-Sleep -Seconds 2
+                    }
+                }
+            }
+        }
         New-Item -ItemType Directory -Path $script:InstallPath -Force | Out-Null
         $PythonDir = Join-Path $script:InstallPath "python"
         New-Item -ItemType Directory -Path $PythonDir -Force | Out-Null
@@ -678,6 +689,9 @@ function Start-Installation {
                 translate_to = ""
                 fix_grammar = $true
                 vad_enabled = $true
+                vad_threshold_db = -45
+                audio_feedback = $true
+                always_listening = $true
             }
             $settings | ConvertTo-Json | Set-Content -Path $settingsPath
             Write-Log "API key saved" "success"
@@ -696,26 +710,22 @@ function Start-Installation {
         $consoleBat = Join-Path $script:InstallPath "Yapper Console.bat"
         Set-Content -Path $consoleBat -Value "@echo off`r`ntitle Yapper`r`ncd /d `"%~dp0`"`r`npython\python.exe app\yapper.py`r`npause"
 
-        # Settings launcher (UI, not CLI!)
+        # Copy settings GUI script
+        $settingsGuiSrc = Join-Path $ScriptDir "installer\settings_gui.ps1"
+        $installerDir = Join-Path $script:InstallPath "installer"
+        New-Item -ItemType Directory -Path $installerDir -Force | Out-Null
+        if (Test-Path $settingsGuiSrc) {
+            Copy-Item $settingsGuiSrc -Destination $installerDir -Force
+        }
+
+        # Settings launcher (PowerShell GUI)
         $settingsBat = Join-Path $script:InstallPath "Settings.bat"
-        Set-Content -Path $settingsBat -Value "@echo off`r`ncd /d `"%~dp0`"`r`nstart `"`" python\pythonw.exe app\settings_ui.py"
+        Set-Content -Path $settingsBat -Value "@echo off`r`ncd /d `"%~dp0`"`r`npowershell -ExecutionPolicy Bypass -File `"%~dp0installer\settings_gui.ps1`""
 
         Write-Log "Launchers created" "success"
         Update-Progress 90
 
-        # Step 9: Create shortcuts
-        if ($script:CreateDesktopShortcut) {
-            Write-Log "Creating desktop shortcut..."
-            $WshShell = New-Object -ComObject WScript.Shell
-            $shortcut = $WshShell.CreateShortcut((Join-Path $DesktopPath "Yapper.lnk"))
-            $shortcut.TargetPath = $yapperBat
-            $shortcut.WorkingDirectory = $script:InstallPath
-            $shortcut.IconLocation = (Join-Path $script:InstallPath "yapper.ico")
-            $shortcut.Description = "Yapper - Speech to Text"
-            $shortcut.Save()
-            Write-Log "Desktop shortcut created" "success"
-        }
-
+        # Step 9: Create startup shortcut if selected
         if ($script:StartWithWindows) {
             Write-Log "Adding to Windows startup..."
             $WshShell = New-Object -ComObject WScript.Shell

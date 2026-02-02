@@ -29,16 +29,16 @@ class SoundPlayer:
         player.stop_recording()   # Play stop sound
     """
 
-    # Default frequencies for generated beeps (Windows)
-    FREQ_START = 800     # Hz - higher pitch for start
-    FREQ_STOP = 400      # Hz - lower pitch for stop
-    FREQ_SUCCESS = 600   # Hz - medium pitch for success
-    FREQ_ERROR = 300     # Hz - low pitch for error
+    # Default frequencies for generated beeps (Windows) - soft, subtle tones
+    FREQ_START = 440     # Hz - gentle A4 note
+    FREQ_STOP = 330      # Hz - soft E4 note
+    FREQ_SUCCESS = 523   # Hz - pleasant C5 note
+    FREQ_ERROR = 262     # Hz - low C4 note
 
-    # Default durations in milliseconds
-    DURATION_SHORT = 100
-    DURATION_MEDIUM = 150
-    DURATION_LONG = 200
+    # Default durations in milliseconds - short and unobtrusive
+    DURATION_SHORT = 50
+    DURATION_MEDIUM = 75
+    DURATION_LONG = 100
 
     def __init__(
         self,

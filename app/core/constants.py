@@ -111,7 +111,7 @@ DEFAULT_SETTINGS: Dict[str, any] = {
 
     # Voice Activity Detection
     "vad_enabled": True,
-    "vad_threshold_db": -35,  # Range: -60 to -10
+    "vad_threshold_db": -45,  # Range: -60 to -10 (more negative = more sensitive)
 
     # History
     "save_history": False,

@@ -1,14 +1,12 @@
 """
 Yapper - System Tray Speech-to-Text
 ====================================
-Always-listening speech-to-text that runs in your system tray.
+Speech-to-text that runs in your system tray.
 
 HOW TO USE:
-  1. Say "Yapper start" - begins recording
+  1. Press F8 (or your configured hotkey) to start recording
   2. Speak your message
-  3. Say "Yapper stop" - transcribes and types
-
-Or use the hotkey (F8 by default) to start/stop.
+  3. Press F8 again to stop and transcribe
 
 Copyright (c) 2026 Cloudelipute
 """
@@ -250,7 +248,6 @@ class YapperTray:
 
         self.recorder = None
         self.transcriber = None
-        self.wake_listener = None
         self.sounds = SoundPlayer(enabled=self._data.get("audio_feedback", True))
         self.history = TranscriptionHistory(enabled=self._data.get("save_history", False))
 
@@ -315,16 +312,6 @@ class YapperTray:
             from PIL import Image
             return Image.new('RGB', (64, 64), (0, 150, 255))
 
-    def on_wake_start(self):
-        """Called when 'Yapper start' is detected."""
-        if not self.is_recording and not self.processing:
-            self.start_recording()
-
-    def on_wake_stop(self):
-        """Called when 'Yapper stop' is detected."""
-        if self.is_recording:
-            self.stop_recording()
-
     def start_recording(self):
         """Start recording audio."""
         if self.is_recording or self.processing:
@@ -334,10 +321,6 @@ class YapperTray:
             self.show_notification("No API Key", "Please set your API key")
             return
 
-        # Pause wake word listener while recording
-        if self.wake_listener:
-            self.wake_listener.pause()
-
         self.is_recording = True
         self.recorder = AudioRecorder(
             device_index=self._data.get("audio_device_index")
@@ -346,13 +329,11 @@ class YapperTray:
 
         if self.recorder.start():
             self.update_icon("recording")
-            self.show_notification("Recording", "Speak now... Say 'Yapper stop' when done")
+            self.show_notification("Recording", "Speak now... Press hotkey when done")
             logger.info("Recording started")
         else:
             self.is_recording = False
             self.sounds.error()
-            if self.wake_listener:
-                self.wake_listener.resume()
             self.show_notification("Error", "Could not start recording")
             logger.error("Failed to start recording")
 
@@ -374,14 +355,12 @@ class YapperTray:
             vad_enabled = self._data.get("vad_enabled", True)
             if vad_enabled and self.recorder and self.recorder.frames:
                 vad = VoiceActivityDetector(
-                    threshold_db=self._data.get("vad_threshold_db", -35)
+                    threshold_db=self._data.get("vad_threshold_db", -45)
                 )
                 if not vad.has_speech(self.recorder.frames):
                     logger.info("No speech detected, skipping")
                     self.show_notification("No Speech", "No speech detected")
                     self.processing = False
-                    if self.wake_listener:
-                        self.wake_listener.resume()
                     try:
                         os.unlink(audio_path)
                     except OSError:
@@ -396,8 +375,6 @@ class YapperTray:
             thread.start()
         else:
             self.processing = False
-            if self.wake_listener:
-                self.wake_listener.resume()
 
     def _process_audio(self, audio_path: str):
         """Process recorded audio."""
@@ -436,8 +413,6 @@ class YapperTray:
 
         finally:
             self.processing = False
-            if self.wake_listener:
-                self.wake_listener.resume()
 
     def toggle_recording(self):
         """Toggle recording on/off."""
@@ -451,21 +426,54 @@ class YapperTray:
         if self.icon:
             try:
                 self.icon.icon = self.create_icon_image(state)
+                hotkey = self._data.get("hotkey", "F8").upper()
                 titles = {
-                    "idle": "Yapper - Listening for 'Yapper start'",
-                    "recording": "Yapper - RECORDING (say 'Yapper stop')",
+                    "idle": f"Yapper - Press {hotkey} to record",
+                    "recording": f"Yapper - RECORDING (press {hotkey} to stop)",
                 }
                 self.icon.title = titles.get(state, "Yapper")
             except Exception as e:
                 logger.error(f"Error updating icon: {e}")
 
     def show_notification(self, title: str, message: str):
-        """Show a system notification."""
-        if self.icon:
-            try:
+        """Show a system notification with Yapper branding."""
+        try:
+            if platform.system() == "Windows":
+                # Use PowerShell for Windows notifications with proper app name
+                import subprocess
+                ps_script = f'''
+                [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
+                [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom, ContentType = WindowsRuntime] | Out-Null
+                $template = @"
+                <toast>
+                    <visual>
+                        <binding template="ToastText02">
+                            <text id="1">{title}</text>
+                            <text id="2">{message}</text>
+                        </binding>
+                    </visual>
+                </toast>
+"@
+                $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
+                $xml.LoadXml($template)
+                $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
+                [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("Yapper").Show($toast)
+                '''
+                subprocess.Popen(
+                    ["powershell", "-WindowStyle", "Hidden", "-Command", ps_script],
+                    creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0x08000000
+                )
+            elif self.icon:
+                # Fallback for other platforms
                 self.icon.notify(message, title)
-            except Exception as e:
-                logger.error(f"Notification error: {e}")
+        except Exception as e:
+            logger.error(f"Notification error: {e}")
+            # Fallback to pystray notification
+            if self.icon:
+                try:
+                    self.icon.notify(message, title)
+                except:
+                    pass
 
     def set_language(self, lang_code: str):
         """Set the translation language."""
@@ -498,26 +506,6 @@ class YapperTray:
         self.rebuild_menu()
         logger.info(f"Grammar correction: {state_text}")
 
-    def toggle_wake_fuzzy(self):
-        """Toggle fuzzy wake word detection."""
-        current = bool(self._data.get("wake_word_fuzzy", True))
-        new_val = not current
-
-        self._data["wake_word_fuzzy"] = new_val
-        self.settings.set("wake_word_fuzzy", new_val)
-        self.settings.save()
-
-        # Restart wake listener with new setting
-        if self.wake_listener:
-            self.wake_listener.stop()
-            if self._data.get("always_listening", True):
-                self._start_wake_listener()
-
-        state_text = "On" if new_val else "Off"
-        self.show_notification("Wake Word", f"Fuzzy detection: {state_text}")
-        self.rebuild_menu()
-        logger.info(f"Fuzzy wake word: {state_text}")
-
     def toggle_vad(self):
         """Toggle voice activity detection."""
         current = bool(self._data.get("vad_enabled", True))
@@ -527,29 +515,10 @@ class YapperTray:
         self.settings.set("vad_enabled", new_val)
         self.settings.save()
 
-        # Restart wake listener with new VAD setting
-        if self.wake_listener:
-            self.wake_listener.stop()
-            if self._data.get("always_listening", True):
-                self._start_wake_listener()
-
         state_text = "On" if new_val else "Off"
         self.show_notification("VAD", f"Voice activity detection: {state_text}")
         self.rebuild_menu()
         logger.info(f"VAD: {state_text}")
-
-    def _start_wake_listener(self):
-        """Start the wake word listener."""
-        self.wake_listener = WakeWordListener(
-            api_key=self._data["api_key"],
-            on_start_command=self.on_wake_start,
-            on_stop_command=self.on_wake_stop,
-            interval=self._data.get("listen_interval", 3),
-            fuzzy=self._data.get("wake_word_fuzzy", True),
-            vad_enabled=self._data.get("vad_enabled", True),
-            vad_threshold_db=self._data.get("vad_threshold_db", -35),
-        )
-        self.wake_listener.start()
 
     def rebuild_menu(self):
         """Rebuild the tray menu."""
@@ -593,14 +562,6 @@ class YapperTray:
 
         if self._data.get("api_key"):
             self._init_transcriber()
-
-            # Restart wake listener
-            if self.wake_listener:
-                self.wake_listener.stop()
-
-            if self._data.get("always_listening", True):
-                self._start_wake_listener()
-
             self.show_notification("Reloaded", "Settings updated")
             self.setup_hotkey()
 
@@ -616,9 +577,6 @@ class YapperTray:
     def quit_app(self):
         """Quit the application."""
         logger.info("Quitting application")
-
-        if self.wake_listener:
-            self.wake_listener.stop()
 
         if self.recorder:
             self.recorder.cleanup()
@@ -673,11 +631,7 @@ class YapperTray:
             pystray.Menu.SEPARATOR,
             item('Output Language', pystray.Menu(*lang_items)),
             item('Grammar Correction', lambda: self.toggle_grammar(), checked=grammar_checked),
-            item('Fuzzy Wake Word', lambda: self.toggle_wake_fuzzy(), checked=fuzzy_checked),
             item('Voice Activity Detection', lambda: self.toggle_vad(), checked=vad_checked),
-            pystray.Menu.SEPARATOR,
-            item('Settings', lambda: self.open_settings()),
-            item('Reload', lambda: self.reload_settings()),
             pystray.Menu.SEPARATOR,
             item('Exit', lambda: self.quit_app())
         )
@@ -710,19 +664,16 @@ class YapperTray:
         # Setup hotkey
         self.setup_hotkey()
 
-        # Start wake word listener
-        if self._data.get("api_key") and self._data.get("always_listening", True):
-            self._start_wake_listener()
-
         # Create tray icon
+        hotkey = self._data.get("hotkey", "F8").upper()
         self.icon = pystray.Icon(
             "Yapper",
             self.create_icon_image("idle"),
-            "Yapper - Listening for 'Yapper start'",
+            f"Yapper - Press {hotkey} to record",
             self.create_menu()
         )
 
-        self.show_notification("Yapper Ready", "Say 'Yapper start' or press F8")
+        self.show_notification("Yapper Ready", f"Press {hotkey} to start recording")
         logger.info(f"Yapper Tray v{VERSION} started")
         self.icon.run()
 
