@@ -44,10 +44,15 @@ from core import (
     disable_console_logging,
 )
 
-# Icon file location
+# Icon file locations
 ICON_FILE = APP_DIR.parent / "yapper.ico"
 if not ICON_FILE.exists():
     ICON_FILE = APP_DIR / "yapper.ico"
+
+# PNG icon for notifications (more reliable with Windows toasts)
+ICON_PNG = APP_DIR.parent / "yapper_icon.png"
+if not ICON_PNG.exists():
+    ICON_PNG = ICON_FILE  # Fallback to ICO
 
 # Initialize logging (disable console for tray mode)
 setup_logging()
@@ -249,7 +254,7 @@ class YapperTray:
         self.recorder = None
         self.transcriber = None
         self.sounds = SoundPlayer(enabled=self._data.get("audio_feedback", True))
-        self.history = TranscriptionHistory(enabled=self._data.get("save_history", False))
+        self.history = TranscriptionHistory(enabled=self._data.get("save_history", True))
 
         self.is_recording = False
         self.processing = False
@@ -436,20 +441,24 @@ class YapperTray:
                 logger.error(f"Error updating icon: {e}")
 
     def show_notification(self, title: str, message: str):
-        """Show a system notification with Yapper branding."""
+        """Show a system notification with Yapper branding and icon."""
         try:
             if platform.system() == "Windows":
-                # Use PowerShell for Windows notifications with proper app name
                 import subprocess
+                # Get absolute path to icon PNG (more reliable for toasts)
+                icon_path = str(ICON_PNG).replace("\\", "\\\\")
+
+                # Use ToastGeneric template with app logo for icon display
                 ps_script = f'''
                 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
                 [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom, ContentType = WindowsRuntime] | Out-Null
                 $template = @"
                 <toast>
                     <visual>
-                        <binding template="ToastText02">
-                            <text id="1">{title}</text>
-                            <text id="2">{message}</text>
+                        <binding template="ToastGeneric">
+                            <image placement="appLogoOverride" src="{icon_path}" hint-crop="circle"/>
+                            <text>{title}</text>
+                            <text>{message}</text>
                         </binding>
                     </visual>
                 </toast>
@@ -569,7 +578,7 @@ class YapperTray:
         self.sounds.enabled = self._data.get("audio_feedback", True)
 
         # Update history
-        self.history.enabled = self._data.get("save_history", False)
+        self.history.enabled = self._data.get("save_history", True)
 
         self.rebuild_menu()
         logger.info("Settings reloaded")

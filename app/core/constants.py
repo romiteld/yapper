@@ -12,7 +12,7 @@ from typing import Dict, List
 # VERSION INFO
 # =============================================================================
 
-VERSION = "3.1.0"
+VERSION = "3.3.0"
 COPYRIGHT = "Copyright (c) 2026 Cloudelipute"
 
 # =============================================================================
@@ -114,7 +114,7 @@ DEFAULT_SETTINGS: Dict[str, any] = {
     "vad_threshold_db": -45,  # Range: -60 to -10 (more negative = more sensitive)
 
     # History
-    "save_history": False,
+    "save_history": True,
 }
 
 # =============================================================================
