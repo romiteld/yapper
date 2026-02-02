@@ -1,0 +1,123 @@
+"""
+Yapper Core Package
+===================
+Shared components for the Yapper speech-to-text application.
+
+Copyright (c) 2026 Cloudelipute
+"""
+
+# Version and metadata
+from .constants import VERSION, COPYRIGHT
+
+# Constants
+from .constants import (
+    LANGUAGES,
+    LANGUAGE_CODES,
+    HOTKEYS,
+    DEFAULT_SETTINGS,
+    SETTINGS_SCHEMA,
+)
+
+# Logging
+from .logger import (
+    setup_logging,
+    get_logger,
+    set_console_level,
+    disable_console_logging,
+    enable_console_logging,
+)
+
+# Configuration
+from .config import (
+    Settings,
+    load_settings,
+    save_settings,
+    get_settings_path,
+    set_settings_path,
+)
+
+# Audio
+from .audio import AudioRecorder, SAMPLE_RATE, CHANNELS, CHUNK_SIZE
+
+# API
+from .api import APIClient, APIError, APIConnectionError, APIRateLimitError
+
+# Transcription
+from .transcriber import Transcriber
+
+# Text Typing
+from .typer import TextTyper
+
+# Devices
+from .devices import (
+    AudioDevice,
+    list_input_devices,
+    get_device_by_index,
+    get_device_by_name,
+    get_default_device,
+    test_device,
+)
+
+# Audio Feedback
+from .sounds import SoundPlayer
+
+# History
+from .history import TranscriptionRecord, TranscriptionHistory
+
+# Voice Activity Detection
+from .vad import VoiceActivityDetector
+
+# Package version
+__version__ = VERSION
+__all__ = [
+    # Version
+    "VERSION",
+    "COPYRIGHT",
+    "__version__",
+    # Constants
+    "LANGUAGES",
+    "LANGUAGE_CODES",
+    "HOTKEYS",
+    "DEFAULT_SETTINGS",
+    "SETTINGS_SCHEMA",
+    # Logging
+    "setup_logging",
+    "get_logger",
+    "set_console_level",
+    "disable_console_logging",
+    "enable_console_logging",
+    # Configuration
+    "Settings",
+    "load_settings",
+    "save_settings",
+    "get_settings_path",
+    "set_settings_path",
+    # Audio
+    "AudioRecorder",
+    "SAMPLE_RATE",
+    "CHANNELS",
+    "CHUNK_SIZE",
+    # API
+    "APIClient",
+    "APIError",
+    "APIConnectionError",
+    "APIRateLimitError",
+    # Transcription
+    "Transcriber",
+    # Text Typing
+    "TextTyper",
+    # Devices
+    "AudioDevice",
+    "list_input_devices",
+    "get_device_by_index",
+    "get_device_by_name",
+    "get_default_device",
+    "test_device",
+    # Audio Feedback
+    "SoundPlayer",
+    # History
+    "TranscriptionRecord",
+    "TranscriptionHistory",
+    # VAD
+    "VoiceActivityDetector",
+]

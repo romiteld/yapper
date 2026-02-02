@@ -1,0 +1,58 @@
+# Yapper - Speech-to-Text Application
+# ====================================
+# Cross-platform dependencies
+
+# Core Dependencies
+openai>=1.0.0           # OpenAI API client for Whisper and GPT
+pyaudio>=0.2.14         # Cross-platform audio recording
+
+# UI and System Tray
+pystray>=0.19.0         # System tray icon (Windows, macOS, Linux)
+Pillow>=10.0.0          # Image processing for tray icon
+customtkinter>=5.0.0    # Modern GUI for settings
+
+# Keyboard Input (Windows/Linux native, needs root on Linux)
+keyboard>=0.13.5        # Global hotkey capture
+
+# Optional: Cross-platform alternatives for keyboard/typing
+pyautogui>=0.9.54       # Cross-platform GUI automation (fallback for typing)
+pyperclip>=1.8.2        # Cross-platform clipboard (for clipboard-based typing)
+
+# Optional: For testing
+# pytest>=7.0.0
+# pytest-cov>=4.0.0
+
+# Platform-specific notes:
+# ========================
+#
+# Windows:
+#   - All packages install normally with pip
+#   - keyboard library works without admin for most use cases
+#
+# macOS:
+#   - pyaudio: brew install portaudio && pip install pyaudio
+#   - keyboard: May need accessibility permissions
+#   - Recommend using pyautogui as primary for typing
+#
+# Linux:
+#   - pyaudio: sudo apt-get install python3-pyaudio portaudio19-dev
+#   - keyboard: Requires root/sudo for global hotkeys
+#   - pystray: sudo apt-get install python3-gi gir1.2-appindicator3-0.1
+#
+# Installation commands:
+# ========================
+#
+# Basic install:
+#   pip install -r requirements.txt
+#
+# macOS with Homebrew:
+#   brew install portaudio
+#   pip install -r requirements.txt
+#
+# Ubuntu/Debian:
+#   sudo apt-get install python3-pyaudio portaudio19-dev python3-gi gir1.2-appindicator3-0.1
+#   pip install -r requirements.txt
+#
+# Fedora/RHEL:
+#   sudo dnf install python3-pyaudio portaudio-devel
+#   pip install -r requirements.txt
