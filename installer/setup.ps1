@@ -43,6 +43,7 @@ $script:CurrentStep = 0
 $script:StartWithWindows = $false
 $script:InstallPath = $InstallDir
 $script:ApiKey = ""
+$script:Hotkey = "f8"
 
 # Create main form
 $form = New-Object System.Windows.Forms.Form
@@ -308,13 +309,42 @@ $browseBtn.Add_Click({
     }
 })
 
+# Hotkey section
+$hotkeyLabel = New-Object System.Windows.Forms.Label
+$hotkeyLabel.Text = "Recording Hotkey"
+$hotkeyLabel.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
+$hotkeyLabel.ForeColor = $TextPrimary
+$hotkeyLabel.Size = New-Object System.Drawing.Size(200, 30)
+$hotkeyLabel.Location = New-Object System.Drawing.Point(100, 210)
+$optionsPanel.Controls.Add($hotkeyLabel)
+
+$hotkeyCombo = New-Object System.Windows.Forms.ComboBox
+$hotkeyCombo.Size = New-Object System.Drawing.Size(200, 35)
+$hotkeyCombo.Location = New-Object System.Drawing.Point(100, 245)
+$hotkeyCombo.Font = New-Object System.Drawing.Font("Segoe UI", 11)
+$hotkeyCombo.BackColor = $BgInput
+$hotkeyCombo.ForeColor = $TextPrimary
+$hotkeyCombo.FlatStyle = "Flat"
+$hotkeyCombo.DropDownStyle = "DropDownList"
+$hotkeyCombo.Items.AddRange(@("F8", "F9", "F10", "F11", "F12", "Pause", "Scroll Lock", "Insert"))
+$hotkeyCombo.SelectedIndex = 0
+$optionsPanel.Controls.Add($hotkeyCombo)
+
+$hotkeyNote = New-Object System.Windows.Forms.Label
+$hotkeyNote.Text = "Press this key to start/stop recording"
+$hotkeyNote.Font = New-Object System.Drawing.Font("Segoe UI", 9)
+$hotkeyNote.ForeColor = $TextMuted
+$hotkeyNote.Size = New-Object System.Drawing.Size(300, 25)
+$hotkeyNote.Location = New-Object System.Drawing.Point(100, 280)
+$optionsPanel.Controls.Add($hotkeyNote)
+
 # Startup section
 $startupLabel = New-Object System.Windows.Forms.Label
 $startupLabel.Text = "Startup"
 $startupLabel.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
 $startupLabel.ForeColor = $TextPrimary
 $startupLabel.Size = New-Object System.Drawing.Size(200, 30)
-$startupLabel.Location = New-Object System.Drawing.Point(100, 220)
+$startupLabel.Location = New-Object System.Drawing.Point(100, 330)
 $optionsPanel.Controls.Add($startupLabel)
 
 # Start with Windows checkbox
@@ -323,17 +353,17 @@ $startupCheck.Text = "  Start Yapper with Windows (system tray)"
 $startupCheck.Font = New-Object System.Drawing.Font("Segoe UI", 11)
 $startupCheck.ForeColor = $TextSecondary
 $startupCheck.Size = New-Object System.Drawing.Size(400, 30)
-$startupCheck.Location = New-Object System.Drawing.Point(100, 255)
+$startupCheck.Location = New-Object System.Drawing.Point(100, 365)
 $startupCheck.Checked = $false
 $startupCheck.FlatStyle = "Flat"
 $optionsPanel.Controls.Add($startupCheck)
 
 $startupNote = New-Object System.Windows.Forms.Label
-$startupNote.Text = "Yapper will run in the system tray when Windows starts.`nSay 'Yapper start' or press F8 to begin recording."
+$startupNote.Text = "Yapper will run in the system tray when Windows starts."
 $startupNote.Font = New-Object System.Drawing.Font("Segoe UI", 9)
 $startupNote.ForeColor = $TextMuted
-$startupNote.Size = New-Object System.Drawing.Size(400, 45)
-$startupNote.Location = New-Object System.Drawing.Point(100, 290)
+$startupNote.Size = New-Object System.Drawing.Size(400, 25)
+$startupNote.Location = New-Object System.Drawing.Point(100, 400)
 $optionsPanel.Controls.Add($startupNote)
 
 # ---------- INSTALL PANEL (Step 3) ----------
@@ -539,7 +569,13 @@ function Show-Step {
         1 { $nextBtn.Text = "Next" }
         2 { $nextBtn.Text = "Install" }
         3 { $nextBtn.Visible = $false; $cancelBtn.Visible = $false; $backBtn.Visible = $false }
-        4 { $nextBtn.Text = "Finish"; $nextBtn.Visible = $true; $cancelBtn.Visible = $false }
+        4 {
+            $nextBtn.Text = "Finish"
+            $nextBtn.Visible = $true
+            $cancelBtn.Visible = $false
+            # Update tip to show selected hotkey
+            $tip3.Text = "Or press $($script:Hotkey.ToUpper()) to toggle recording"
+        }
     }
 }
 
@@ -547,6 +583,7 @@ function Start-Installation {
     $script:InstallPath = $locationBox.Text
     $script:StartWithWindows = $startupCheck.Checked
     $script:ApiKey = $apiKeyBox.Text.Trim()
+    $script:Hotkey = $hotkeyCombo.SelectedItem.ToString().ToLower().Replace(" ", " ")
 
     Show-Step 3
 
@@ -679,23 +716,22 @@ function Start-Installation {
         Write-Log "Application files installed" "success"
         Update-Progress 80
 
-        # Step 7: Save API key if provided
-        if ($script:ApiKey -and $script:ApiKey.StartsWith("sk-")) {
-            Write-Log "Saving API key..."
-            $settingsPath = Join-Path $appDst "settings.json"
-            $settings = @{
-                api_key = $script:ApiKey
-                hotkey = "f8"
-                translate_to = ""
-                fix_grammar = $true
-                vad_enabled = $true
-                vad_threshold_db = -45
-                audio_feedback = $true
-                always_listening = $true
-            }
-            $settings | ConvertTo-Json | Set-Content -Path $settingsPath
-            Write-Log "API key saved" "success"
+        # Step 7: Save settings
+        Write-Log "Saving settings..."
+        $settingsPath = Join-Path $appDst "settings.json"
+        $settings = @{
+            api_key = if ($script:ApiKey -and $script:ApiKey.StartsWith("sk-")) { $script:ApiKey } else { "" }
+            hotkey = $script:Hotkey
+            translate_to = ""
+            fix_grammar = $true
+            vad_enabled = $true
+            vad_threshold_db = -45
+            audio_feedback = $true
+            always_listening = $true
+            save_history = $true
         }
+        $settings | ConvertTo-Json | Set-Content -Path $settingsPath
+        Write-Log "Settings saved (Hotkey: $($script:Hotkey.ToUpper()))" "success"
         Update-Progress 85
 
         # Step 8: Create launchers
