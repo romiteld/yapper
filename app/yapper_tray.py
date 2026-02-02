@@ -568,27 +568,24 @@ $form.ShowDialog() | Out-Null
     def open_settings(self):
         """Open the settings UI."""
         import subprocess
-        settings_path = APP_DIR / "settings_console.py"
+        settings_path = APP_DIR / "settings_ui.py"
 
         if settings_path.exists():
             try:
                 system = platform.system()
                 if system == "Windows":
-                    subprocess.Popen(
-                        ["cmd", "/c", "start", "cmd", "/k", sys.executable, str(settings_path)]
-                    )
+                    # Use pythonw to avoid console window, or python if not available
+                    python_dir = Path(sys.executable).parent
+                    pythonw = python_dir / "pythonw.exe"
+                    if pythonw.exists():
+                        subprocess.Popen([str(pythonw), str(settings_path)])
+                    else:
+                        subprocess.Popen([sys.executable, str(settings_path)])
                 elif system == "Darwin":
-                    subprocess.Popen(
-                        ["open", "-a", "Terminal", str(settings_path)]
-                    )
+                    subprocess.Popen([sys.executable, str(settings_path)])
                 else:
-                    # Try common Linux terminal emulators
-                    for terminal in ["gnome-terminal", "xterm", "konsole"]:
-                        try:
-                            subprocess.Popen([terminal, "-e", sys.executable, str(settings_path)])
-                            break
-                        except FileNotFoundError:
-                            continue
+                    subprocess.Popen([sys.executable, str(settings_path)])
+                logger.info("Opened settings UI")
             except Exception as e:
                 logger.error(f"Could not open settings: {e}")
 
@@ -671,6 +668,8 @@ $form.ShowDialog() | Out-Null
             item('Voice Activity Detection', lambda: self.toggle_vad(), checked=vad_checked),
             pystray.Menu.SEPARATOR,
             item('View History', lambda: self.open_history()),
+            item('Settings', lambda: self.open_settings()),
+            item('Reload Settings', lambda: self.reload_settings()),
             pystray.Menu.SEPARATOR,
             item('Exit', lambda: self.quit_app())
         )
