@@ -301,11 +301,16 @@ $optionsPanel.Controls.Add($browseBtn)
 
 $browseBtn.Add_Click({
     $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
-    $folderBrowser.Description = "Select installation folder"
-    $folderBrowser.SelectedPath = $locationBox.Text
+    $folderBrowser.Description = "Select where to install Yapper (a 'Yapper' folder will be created)"
+    $folderBrowser.SelectedPath = Split-Path $locationBox.Text -Parent
     if ($folderBrowser.ShowDialog() -eq "OK") {
-        $locationBox.Text = $folderBrowser.SelectedPath
-        $script:InstallPath = $folderBrowser.SelectedPath
+        $selectedPath = $folderBrowser.SelectedPath
+        # Always append Yapper folder unless user already selected a Yapper folder
+        if ((Split-Path $selectedPath -Leaf) -ne "Yapper") {
+            $selectedPath = Join-Path $selectedPath "Yapper"
+        }
+        $locationBox.Text = $selectedPath
+        $script:InstallPath = $selectedPath
     }
 })
 
