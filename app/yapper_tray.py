@@ -259,6 +259,7 @@ class YapperTray:
         self.is_recording = False
         self.processing = False
         self.icon = None
+        self._last_hotkey_time = 0  # Debounce for hotkey
 
         # Initialize transcriber if API key is set
         if self._data.get("api_key"):
@@ -384,11 +385,16 @@ class YapperTray:
     def _process_audio(self, audio_path: str):
         """Process recorded audio."""
         try:
+            self.show_notification("Processing", "Transcribing audio...")
             text = self.transcriber.transcribe(audio_path)
 
             if text:
                 typer = TextTyper()
-                if typer.type_text(text):
+                logger.info(f"About to type text: {text[:50]}...")
+                success = typer.type_text(text)
+                logger.info(f"Type result: {success}")
+
+                if success:
                     self.sounds.success()
                     preview = text[:40] + "..." if len(text) > 40 else text
                     self.show_notification("Done", preview)
@@ -406,13 +412,14 @@ class YapperTray:
                         self.history.add(record)
                 else:
                     self.sounds.error()
-                    self.show_notification("Error", "Could not type text")
+                    self.show_notification("Type Failed", "Could not type text - check admin rights")
+                    logger.error("TextTyper.type_text returned False")
             else:
                 self.show_notification("Empty", "No speech detected")
                 logger.warning("Empty transcription")
 
         except Exception as e:
-            logger.error(f"Processing error: {e}")
+            logger.error(f"Processing error: {e}", exc_info=True)
             self.sounds.error()
             self.show_notification("Error", str(e)[:50])
 
@@ -421,6 +428,13 @@ class YapperTray:
 
     def toggle_recording(self):
         """Toggle recording on/off."""
+        # Debounce - ignore if triggered within 500ms
+        current_time = time.time()
+        if current_time - self._last_hotkey_time < 0.5:
+            logger.debug("Hotkey debounced")
+            return
+        self._last_hotkey_time = current_time
+
         if self.is_recording:
             self.stop_recording()
         else:
@@ -442,10 +456,15 @@ class YapperTray:
 
     def show_notification(self, title: str, message: str):
         """Show a custom pink notification with white text."""
+        logger.debug(f"Notification: {title} - {message}")
         try:
             if platform.system() == "Windows":
                 import subprocess
                 icon_path = str(ICON_PNG).replace("\\", "/")
+
+                # Escape quotes in message for PowerShell
+                safe_title = title.replace('"', '`"').replace("'", "''")
+                safe_message = message.replace('"', '`"').replace("'", "''")
 
                 # Custom Windows Forms notification - pink background, white text
                 ps_script = f'''
@@ -474,7 +493,7 @@ try {{
 }} catch {{}}
 
 $titleLabel = New-Object System.Windows.Forms.Label
-$titleLabel.Text = "{title}"
+$titleLabel.Text = "{safe_title}"
 $titleLabel.ForeColor = [System.Drawing.Color]::White
 $titleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
 $titleLabel.AutoSize = $true
@@ -482,7 +501,7 @@ $titleLabel.Location = New-Object System.Drawing.Point(70, 12)
 $form.Controls.Add($titleLabel)
 
 $msgLabel = New-Object System.Windows.Forms.Label
-$msgLabel.Text = "{message}"
+$msgLabel.Text = "{safe_message}"
 $msgLabel.ForeColor = [System.Drawing.Color]::White
 $msgLabel.Font = New-Object System.Drawing.Font("Segoe UI", 10)
 $msgLabel.AutoSize = $true
@@ -506,11 +525,12 @@ $form.ShowDialog() | Out-Null
                 self.icon.notify(message, title)
         except Exception as e:
             logger.error(f"Notification error: {e}")
+            # Fallback to tray notification
             if self.icon:
                 try:
                     self.icon.notify(message, title)
-                except:
-                    pass
+                except Exception as e2:
+                    logger.error(f"Fallback notification also failed: {e2}")
 
     def set_language(self, lang_code: str):
         """Set the translation language."""
