@@ -8,6 +8,9 @@ never touch the real ``app/settings.json``.
 © 2026 Cloudelipute
 """
 
+import os
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock

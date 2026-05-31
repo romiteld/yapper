@@ -72,4 +72,5 @@ default-groups = []
 minversion = "8.0"
 testpaths = ["tests"]
 addopts = "-ra -q"
+qt_api = "pyside6"
 # Qt UI tests are offscreen-safe in CI; set per-run with QT_QPA_PLATFORM=offscreen.
