@@ -31,38 +31,59 @@ _DOT_SUFFIXES = [
 ]
 _DOT_SUFFIX_RE = "|".join(sorted(_DOT_SUFFIXES, key=len, reverse=True))
 
-# Common words that, when they precede "dash <letter>" or "dash dash <word>",
-# indicate ordinary prose rather than a CLI flag.  The dash rules are
-# suppressed after any of these.
+# Common words that, when they precede "dash <letter>", indicate ordinary prose
+# rather than a CLI short flag. The single-letter dash rule is suppressed after
+# any of these (it also requires a positive CLI cue to fire — see
+# _expand_single_dash).
 _DASH_PROSE_PRECEDERS = frozenset({
     # Articles, prepositions, and determiners.
     "a", "an", "the", "of", "in", "that", "this", "his", "her", "your",
-    # Common verbs that appear in prose "X dash dash Y" patterns.
+    # Common verbs/words that appear in prose "X dash <letter>" patterns.
     "made", "was", "is", "are", "be", "been", "had", "has", "have",
-    # Nouns/adjectives that read as prose before "dash dash".
     "plan", "score", "mark", "note", "long", "mad", "em", "quick", "straight",
-    "even", "odd", "just", "set",
+    "even", "odd", "just",
+})
+
+# Narrow prose blacklist for the "dash dash <word>" (--flag) rule. Because
+# "dash dash" is a near-unambiguous CLI cue, this rule CONVERTS BY DEFAULT and
+# only suppresses these clearly-prose preceders. It deliberately EXCLUDES words
+# like "set"/"config"/"install"/"get" that are legitimate CLI subcommands, so
+# real commands ("npm set --global", "git config --global") still convert.
+_DASH_DASH_PROSE_PRECEDERS = frozenset({
+    # Articles, prepositions, determiners.
+    "a", "an", "the", "of", "in", "that", "this", "his", "her", "your",
+    # Linking/auxiliary verbs that read as prose before "dash dash".
+    "was", "were", "is", "are", "be", "been", "had", "has", "have", "made",
+    # Adjectives/adverbs that read as prose before "dash dash".
+    "long", "mad", "em", "quick", "straight", "even", "odd", "just",
+    # Common everyday nouns that are NOT CLI subcommands.
+    "plan", "score", "mark", "note", "dash",
 })
 
 # If the letter after "dash" is itself a standalone English word/article, the
 # phrase reads as prose ("grade dash a", "... dash i ...") — not a CLI flag.
 _DASH_PROSE_LETTERS = frozenset({"a", "i"})
 
-# Positive-evidence CLI verbs/commands: the single-dash rule fires ONLY when
+# Positive-evidence CLI verbs/commands/subcommands. The dash rules fire when
 # the preceding token is one of these (or when there is no preceding word, i.e.
-# the flag appears at the start of the utterance).  This prevents "she dash B",
-# "plan dash B", "vitamin dash C" from being mangled.
+# the flag appears at the start of the utterance). This prevents "she dash B",
+# "plan dash B", "vitamin dash C" from being mangled while still converting real
+# CLI commands like "npm set --global", "git config --global".
 _DASH_CLI_VERBS = frozenset({
-    # shell/CLI verbs
+    # shell/CLI verbs and common subcommands
     "run", "use", "with", "exec", "flag", "apply", "commit", "push", "pull",
-    "build", "test", "install", "deploy", "serve", "start", "stop", "add",
-    "remove", "create", "delete", "update", "init", "clone", "checkout",
-    "merge", "rebase", "fetch", "diff", "log", "status", "reset",
+    "build", "test", "install", "uninstall", "deploy", "serve", "start", "stop",
+    "add", "remove", "create", "delete", "update", "upgrade", "init", "clone",
+    "checkout", "merge", "rebase", "fetch", "diff", "log", "status", "reset",
+    "config", "set", "get", "list", "show", "save", "publish", "link", "unlink",
+    "restart", "exec", "logs", "describe", "scale", "rollout", "expose",
+    "config", "login", "logout", "search", "info", "audit", "format", "lint",
     # common CLI binaries
-    "git", "kubectl", "docker", "npm", "yarn", "pip", "python", "python3",
+    "git", "kubectl", "docker", "npm", "yarn", "pnpm", "pip", "python", "python3",
     "ls", "cp", "mv", "rm", "cat", "grep", "find", "curl", "ssh", "scp",
     "tar", "rsync", "make", "cmake", "go", "cargo", "rustc", "java", "mvn",
-    "uv", "pipx", "brew", "apt", "yum", "dnf", "pacman",
+    "uv", "pipx", "brew", "apt", "yum", "dnf", "pacman", "helm", "terraform",
+    "gradle", "node", "deno", "bun", "gcloud", "aws", "az",
 })
 
 
@@ -105,18 +126,31 @@ def _expand_single_dash(match: "re.Match") -> str:
 
 
 def _expand_double_dash(match: "re.Match") -> str:
-    """Replace "dash dash <word>" -> "--<word>" unless a prose word precedes it.
+    """Replace "dash dash <word>" -> "--<word>".
 
-    Suppressed when the preceding word is in _DASH_PROSE_PRECEDERS (common
-    articles, prepositions, and other prose words), so "the score was dash dash
-    even", "plan dash dash backup" and "a long dash dash mark" are left alone.
-    Converts for CLI contexts like "dash dash help", "git commit dash dash amend",
-    "kubectl get pods dash dash all".
+    "dash dash" is a near-unambiguous long-flag cue (saying "dash dash" out loud
+    in casual prose is rare), so we CONVERT BY DEFAULT and only suppress when the
+    preceding word is a clear prose word (_DASH_DASH_PROSE_PRECEDERS). This keeps
+    real CLI commands working even when a subcommand/argument noun precedes the
+    flag — e.g. "npm set --global", "git config --global", "kubectl get pods
+    --all", "git commit --amend" — while leaving contrived prose like "the score
+    was dash dash even" / "plan dash dash backup" / "a long dash dash mark"
+    untouched.
+
+    NOTE: this uses a narrower prose blacklist than the single-dash rule, NOT a
+    CLI verb whitelist, precisely because the preceding token is often a CLI
+    noun/argument ("pods", "image", "config") that no whitelist could enumerate.
+    Erring toward conversion is correct here (see the bug #22 re-verification).
     """
     pre = (match.group("pre") or "").lower()
     word = match.group("word")
-    if pre in _DASH_PROSE_PRECEDERS:
+
+    # Only suppress for clearly-prose preceders that are NOT plausible CLI
+    # commands/subcommands/arguments. (Words like "set"/"config"/"install" are
+    # deliberately excluded — they are real CLI subcommands.)
+    if pre and pre in _DASH_DASH_PROSE_PRECEDERS:
         return match.group(0)  # prose — leave untouched
+
     prefix = match.group("pre")
     space = match.group("presp") or ""
     return f"{prefix}{space}--{word}" if prefix else f"--{word}"

@@ -206,17 +206,29 @@ def test_backtick_paired_still_converts():
 
 
 def test_double_dash_prose_preceder_suppressed():
-    """'dash dash' after an unrecognized/prose word must not convert to '--'
-    (bug #22 — default-safe: only convert when preceded by a CLI verb)."""
+    """'dash dash' after a clearly-prose word must NOT convert to '--'
+    (bug #22 — narrow prose blacklist; convert-by-default otherwise)."""
     assert expand_spoken_symbols("the score was dash dash even") == "the score was dash dash even"
     assert expand_spoken_symbols("a long dash dash mark") == "a long dash dash mark"
     assert expand_spoken_symbols("plan dash dash backup") == "plan dash dash backup"
 
 
 def test_double_dash_cli_context_still_converts():
-    """'dash dash help' and similar CLI patterns must still convert (bug #22 guard)."""
+    """Real CLI long-flags must convert, including when a CLI subcommand or
+    argument noun precedes 'dash dash' (bug #22 re-verification regression).
+
+    'dash dash' is a near-unambiguous cue so we convert by default and only
+    suppress a narrow prose blacklist — NOT a CLI-verb whitelist — so that
+    'npm set --global' / 'git config --global' / 'kubectl get pods --all'
+    keep working."""
     assert expand_spoken_symbols("dash dash help") == "--help"
     assert expand_spoken_symbols("git commit dash dash amend") == "git commit --amend"
+    # The regression case: a subcommand word ("set") precedes "dash dash".
+    assert expand_spoken_symbols("npm set dash dash global") == "npm set --global"
+    assert expand_spoken_symbols("git config dash dash global") == "git config --global"
+    assert expand_spoken_symbols("npm install dash dash save dev") == "npm install --save dev"
+    # Argument noun ("pods") precedes "dash dash".
+    assert expand_spoken_symbols("kubectl get pods dash dash all") == "kubectl get pods --all"
 
 
 # ---------------------------------------------------------------------------
@@ -540,6 +552,10 @@ def test_new_no_mangling_cases(s):
 @pytest.mark.parametrize("raw,expected", [
     ("dash dash help", "--help"),
     ("git commit dash dash amend", "git commit --amend"),
+    ("npm set dash dash global", "npm set --global"),
+    ("git config dash dash global", "git config --global"),
+    ("npm install dash dash save dev", "npm install --save dev"),
+    ("kubectl get pods dash dash all", "kubectl get pods --all"),
     ("kubectl apply dash f deployment dot yaml", "kubectl apply -f deployment.yaml"),
     ("open paren hello close paren", "(hello)"),
     ("wrap backtick code backtick here", "wrap `code` here"),
