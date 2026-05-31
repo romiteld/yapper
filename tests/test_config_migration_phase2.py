@@ -70,3 +70,43 @@ def test_migrate_is_idempotent(tmp_path):
     s.save()
     s2 = Settings(p).load()
     assert s2.get("text_model") == first == "gpt-5-nano"
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: output_mode rename migration (technical->clean, natural->polished)
+# ---------------------------------------------------------------------------
+
+def test_legacy_output_mode_technical_migrates_to_clean(tmp_path):
+    from core.config import Settings
+    p = tmp_path / "settings.json"
+    p.write_text(json.dumps({"api_key": "x", "output_mode": "technical"}))
+    s = Settings(settings_path=p).load()
+    assert s.get("output_mode") == "clean"
+
+
+def test_legacy_output_mode_natural_migrates_to_polished(tmp_path):
+    from core.config import Settings
+    p = tmp_path / "settings.json"
+    p.write_text(json.dumps({"api_key": "x", "output_mode": "natural"}))
+    s = Settings(settings_path=p).load()
+    assert s.get("output_mode") == "polished"
+
+
+def test_current_output_modes_left_as_is(tmp_path):
+    from core.config import Settings
+    for mode in ("clean", "polished", "verbatim"):
+        p = tmp_path / f"settings_{mode}.json"
+        p.write_text(json.dumps({"api_key": "x", "output_mode": mode}))
+        s = Settings(settings_path=p).load()
+        assert s.get("output_mode") == mode
+
+
+def test_output_mode_migration_idempotent(tmp_path):
+    from core.config import Settings
+    p = tmp_path / "settings.json"
+    p.write_text(json.dumps({"api_key": "x", "output_mode": "technical"}))
+    s = Settings(settings_path=p).load()
+    assert s.get("output_mode") == "clean"
+    s.save()
+    s2 = Settings(settings_path=p).load()
+    assert s2.get("output_mode") == "clean"  # stays clean, not re-migrated

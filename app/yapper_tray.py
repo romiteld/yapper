@@ -267,11 +267,22 @@ class YapperTray:
 
     def _init_transcriber(self):
         """Initialize the transcriber with current settings."""
+        from core import Vocabulary
+        # Start with the built-in starter pack, then layer the user's terms.
+        vocab = Vocabulary()
+        for entry in self._data.get("vocabulary", []) or []:
+            if isinstance(entry, str):
+                vocab.add(entry)
+            elif isinstance(entry, dict) and entry.get("typed"):
+                vocab.add(entry["typed"], said=entry.get("said"))
         self.transcriber = Transcriber(
             api_key=self._data["api_key"],
             language_hint=self._data.get("language_hint", ""),
             translate_to=self._data.get("translate_to", ""),
             fix_grammar=self._data.get("fix_grammar", True),
+            output_mode=self._data.get("output_mode", "clean"),
+            expand_spoken_symbols=self._data.get("expand_spoken_symbols", True),
+            vocabulary=vocab,
             clean_wake_words=True  # Clean wake words in tray mode
         )
 

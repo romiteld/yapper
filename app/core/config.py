@@ -244,11 +244,28 @@ class Settings:
                 legacy, self._data["activation_mode"],
             )
 
+        # Legacy output_mode names (technical/natural) get renamed even though
+        # the new schema would reject them on validation. Read the raw file
+        # value so the rename survives the validation step.
+        raw_mode = file_data.get("output_mode")
+        if raw_mode in self._OUTPUT_MODE_RENAMES:
+            new_mode = self._OUTPUT_MODE_RENAMES[raw_mode]
+            self._data["output_mode"] = new_mode
+            logger.info(
+                "Migrated legacy output_mode '%s' -> '%s'", raw_mode, new_mode
+            )
+
     def _create_default_file(self) -> None:
         """Create default settings file."""
         self._data = DEFAULT_SETTINGS.copy()
         self.save()
         logger.info(f"Created default settings file at {self._path}")
+
+    # Legacy output_mode names -> current names (Phase 3 rename).
+    _OUTPUT_MODE_RENAMES = {
+        "technical": "clean",
+        "natural": "polished",
+    }
 
     def migrate(self) -> bool:
         """Backfill new keys onto legacy settings files.
@@ -263,6 +280,17 @@ class Settings:
             if key not in self._data:
                 self._data[key] = default
                 changed = True
+
+        # Rename legacy output_mode values (technical->clean, natural->polished).
+        # clean/polished/verbatim are left as-is, so this is idempotent.
+        current_mode = self._data.get("output_mode")
+        if current_mode in self._OUTPUT_MODE_RENAMES:
+            new_mode = self._OUTPUT_MODE_RENAMES[current_mode]
+            self._data["output_mode"] = new_mode
+            logger.info(
+                "Migrated legacy output_mode '%s' -> '%s'", current_mode, new_mode
+            )
+            changed = True
 
         if changed:
             logger.info("Migrated legacy settings: backfilled new keys")

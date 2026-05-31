@@ -14,32 +14,26 @@ import os
 import re
 from typing import Optional
 
+from .api import APIClient
 from .engines.base import TranscriptionEngine
+from .formatting import Formatter
 from .logger import get_logger
+from .vocabulary import Vocabulary
 
 logger = get_logger("transcriber")
-
-
-class _PassthroughFormatter:
-    """No-op stand-in for the Phase 3 Formatter; returns text unchanged."""
-
-    def format(
-        self,
-        raw_text: str,
-        *,
-        mode: str,
-        expand_symbols: bool,
-        translate_to: Optional[str],
-    ) -> str:
-        return raw_text
 
 
 class Transcriber:
     """Orchestrates transcription over a TranscriptionEngine + a Formatter.
 
+    In production the real no-slop ``Formatter`` always runs: spoken-symbol
+    expansion + vocabulary correction are deterministic and run even with no
+    API key; the LLM cleanup/translation steps only run when a text API client
+    is available.
+
     Example:
         eng = get_engine(settings)
-        t = Transcriber(engine=eng, output_mode="technical")
+        t = Transcriber(engine=eng, output_mode="clean")
         text = t.transcribe("audio.wav")
     """
 
@@ -59,17 +53,17 @@ class Transcriber:
         api_key: str = "",
         language_hint: str = "",
         translate_to: str = "",
-        output_mode: str = "technical",
+        output_mode: str = "clean",
         expand_spoken_symbols: bool = True,
         formatter: Optional[object] = None,
         clean_wake_words: bool = True,
         vocabulary: Optional[object] = None,
+        text_api_client: Optional[object] = None,
         # Legacy compat (Phase 1/old callers); folded into output_mode.
         fix_grammar: bool = True,
     ):
         if engine is None:
             # Backward-compat: build a CloudEngine from an api_key.
-            from .api import APIClient
             from .engines.cloud import CloudEngine
             engine = CloudEngine(api_client=APIClient(api_key=api_key))
         self._engine = engine
@@ -78,11 +72,22 @@ class Transcriber:
         self.output_mode = output_mode
         self.expand_spoken_symbols = expand_spoken_symbols
         self.clean_wake_words = clean_wake_words
-        # Stored for the Phase 3 Formatter to consume (legacy compat).
+        # Stored for legacy compat (kept for callers/tests that read it).
         self.fix_grammar = fix_grammar
-        # Phase 3: Vocabulary for Whisper bias + correction.
-        self._vocabulary = vocabulary
-        self._formatter = formatter or _PassthroughFormatter()
+        # Phase 3: Vocabulary for Whisper bias + correction. Always present so
+        # the deterministic stages (symbol expansion, correction) have terms.
+        self._vocabulary = vocabulary if vocabulary is not None else Vocabulary()
+
+        # Build the real no-slop Formatter by default. The text API client
+        # drives the LLM cleanup/translation steps; with no API key it is None
+        # and the Formatter cleanly skips those steps (deterministic only).
+        if formatter is not None:
+            self._formatter = formatter
+        else:
+            text_client = text_api_client
+            if text_client is None and api_key:
+                text_client = APIClient(api_key=api_key)
+            self._formatter = Formatter(text_client, self._vocabulary)
 
     def transcribe(
         self,

@@ -3,12 +3,12 @@ from app.core import constants
 
 
 def test_output_modes_list_present():
-    assert constants.OUTPUT_MODES == ["technical", "natural", "verbatim"]
+    assert constants.OUTPUT_MODES == ["clean", "polished", "verbatim"]
 
 
 def test_default_settings_has_formatting_keys():
     d = constants.DEFAULT_SETTINGS
-    assert d["output_mode"] == "technical"
+    assert d["output_mode"] == "clean"
     assert d["expand_spoken_symbols"] is True
     assert d["vocabulary"] == []
 
@@ -16,9 +16,10 @@ def test_default_settings_has_formatting_keys():
 def test_schema_validates_output_mode():
     _type, validator, _desc = constants.SETTINGS_SCHEMA["output_mode"]
     assert _type is str
-    assert validator("technical") is True
-    assert validator("natural") is True
+    assert validator("clean") is True
+    assert validator("polished") is True
     assert validator("verbatim") is True
+    assert validator("technical") is False  # legacy name no longer valid
     assert validator("slop") is False
 
 

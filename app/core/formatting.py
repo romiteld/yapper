@@ -1,8 +1,10 @@
 """
 Yapper No-Slop Formatting Subsystem
 ===================================
-Spoken-symbol expansion and output-mode cleanup that preserves technical
-text verbatim (CLI flags, file paths, code identifiers) and never paraphrases.
+Spoken-symbol expansion and output-mode cleanup for a general-purpose
+dictation tool. Types what the user actually said — their wording, voice,
+slang, AND any jargon/code/CLI flags/paths — fixing only mechanics, never
+paraphrasing. Works the same for casual messaging and technical text.
 
 © 2026 Cloudelipute
 """
@@ -80,14 +82,20 @@ class Formatter:
     upstream):
       1. spoken-symbol expansion (optional)
       2. canonical vocabulary correction
-      3. mode cleanup (LLM) — technical | natural ; verbatim skips the LLM
+      3. mode cleanup (LLM) — clean | polished ; verbatim skips the LLM
       4. translation (replaces mode cleanup when a target language is set)
+
+    The LLM steps (3 and 4) require an ``api_client``. When ``api_client`` is
+    None (e.g. no API key configured), those steps are skipped and the
+    deterministic result from steps 1-2 is returned — so a user with no key
+    still gets spoken-symbol expansion and vocabulary correction.
     """
 
     def __init__(self, api_client, vocabulary):
         """
         Args:
-            api_client: APIClient with a ``chat(messages, ...)`` method.
+            api_client: APIClient with a ``chat(messages, ...)`` method, or
+                None to skip all LLM cleanup/translation steps.
             vocabulary: Vocabulary used for correction and protected tokens.
         """
         self._api = api_client
@@ -106,7 +114,7 @@ class Formatter:
 
         Args:
             raw_text: Raw transcription text.
-            mode: 'technical' | 'natural' | 'verbatim'.
+            mode: 'clean' | 'polished' | 'verbatim'.
             expand_symbols: Whether to run spoken-symbol expansion.
             translate_to: Target language code, or None/"" for no translation.
 
@@ -128,28 +136,33 @@ class Formatter:
         if mode == "verbatim" and not translate_to:
             return text
 
+        # Without an API client we can't run the LLM steps; return the
+        # deterministic result so symbol/vocab help still works offline.
+        if self._api is None:
+            return text
+
         # 4. Translation replaces mode cleanup when a target language is set.
         if translate_to:
             return self._translate(text, translate_to)
 
         # 3. Mode cleanup (LLM).
-        if mode == "natural":
-            return self._natural_cleanup(text)
-        # default / technical
-        return self._technical_cleanup(text)
+        if mode == "polished":
+            return self._polished_cleanup(text)
+        # default / clean
+        return self._clean_cleanup(text)
 
     def _protected_tokens(self) -> str:
         tokens = [t["typed"] for t in self._vocab.terms if t["typed"]]
         return ", ".join(tokens)
 
-    def _technical_cleanup(self, text: str) -> str:
+    def _clean_cleanup(self, text: str) -> str:
         system = (
-            "You clean up dictated technical text for a software engineer. "
-            "Fix ONLY capitalization and obvious punctuation. "
-            "Preserve all identifiers, camelCase/snake_case, CLI flags, file "
-            "paths, URLs, and code verbatim. Never paraphrase, never 'improve' "
-            "wording, never translate or alter code tokens, never add or remove "
-            "words. Output ONLY the cleaned text, nothing else."
+            "You clean up dictated speech. Fix capitalization and punctuation "
+            "and remove filler words (um, uh, 'like'/'you know' used as "
+            "fillers). Do NOT rephrase, reword, summarize, translate, or change "
+            "the user's wording, tone, slang, or voice. Preserve all technical "
+            "terms, code, identifiers, CamelCase, CLI flags, and file paths "
+            "exactly. Return only the user's cleaned words."
         )
         protected = self._protected_tokens()
         if protected:
@@ -164,7 +177,7 @@ class Formatter:
         )
         return result.strip() if result else text
 
-    def _natural_cleanup(self, text: str) -> str:
+    def _polished_cleanup(self, text: str) -> str:
         system = (
             "You polish dictated prose. Fix grammar and punctuation, remove "
             "filler words (um, uh, like, you know), and produce clean, natural "

@@ -92,11 +92,14 @@ HOTKEYS: List[str] = [
 # OUTPUT MODES (no-slop formatting)
 # =============================================================================
 
-# Output formatting modes for the no-slop subsystem.
-# technical = fix only caps/punctuation, never paraphrase code/identifiers
-# natural   = grammar-polished prose (filler removal, punctuation)
+# Output formatting modes for the no-slop subsystem. Yapper is a
+# general-purpose dictation tool (agent prompts, docs, everyday messaging),
+# so the default keeps the user's own wording — it never paraphrases.
+# clean     = (default) fix only caps/punctuation + remove fillers; keep the
+#             user's exact words, tone, slang, and any jargon/code verbatim
+# polished  = opt-in heavier rewrite into tidy prose
 # verbatim  = no LLM cleanup at all
-OUTPUT_MODES: List[str] = ["technical", "natural", "verbatim"]
+OUTPUT_MODES: List[str] = ["clean", "polished", "verbatim"]
 
 # =============================================================================
 # ENGINES & MODELS
@@ -148,7 +151,7 @@ DEFAULT_SETTINGS: Dict[str, any] = {
     "fix_grammar": True,  # Auto-correct grammar when not translating
 
     # No-slop formatting (Phase 3)
-    "output_mode": "technical",       # technical | natural | verbatim
+    "output_mode": "clean",           # clean | polished | verbatim
     "expand_spoken_symbols": True,    # expand "dash dash help" -> "--help"
     "vocabulary": [],                 # list of {said, typed} term dicts
 

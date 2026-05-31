@@ -13,10 +13,10 @@ def _make_engine(raw_transcription):
     return eng
 
 
-def _make_transcriber_with_formatter(raw_transcription, vocab, output_mode="technical"):
+def _make_transcriber_with_formatter(raw_transcription, vocab, output_mode="clean"):
     """Build a Transcriber with a real Formatter (LLM echoes deterministic text)."""
     api = MagicMock()
-    # Technical-mode LLM echoes the already-clean deterministic text.
+    # Clean-mode LLM echoes the already-clean deterministic text.
     api.chat.side_effect = lambda messages, **kw: messages[1]["content"]
     formatter = Formatter(api, vocab)
     eng = _make_engine(raw_transcription)
@@ -82,3 +82,64 @@ def test_verbatim_mode_skips_llm(tmp_path):
     out = t.transcribe(str(wav), delete_audio=False)
     assert out == "kubectl apply"
     api.chat.assert_not_called()
+
+
+def test_default_construction_uses_real_formatter_end_to_end(tmp_path):
+    """A Transcriber built the NORMAL way (api_key, no explicit formatter)
+    must use a real Formatter and actually apply output_mode + vocabulary.
+
+    The internally-built text APIClient is patched so its chat() echoes the
+    user content (clean-mode identity), proving the golden no-slop case works
+    end-to-end through Transcriber.transcribe()."""
+    wav = tmp_path / "a.wav"
+    wav.write_bytes(b"RIFFfake")
+
+    vocab = Vocabulary(load_starter=False)
+    vocab.add("kubectl", said="cube cuttle")
+    eng = _make_engine("cube cuttle apply dash f deployment dot yaml")
+
+    # Patch the APIClient used for the text/LLM path so no real call happens.
+    with patch("app.core.transcriber.APIClient") as MockAPI:
+        text_api = MockAPI.return_value
+        text_api.chat.side_effect = lambda messages, **kw: messages[1]["content"]
+
+        # NORMAL construction: api_key + vocabulary, NO explicit formatter.
+        t = Transcriber(
+            engine=eng,
+            api_key="sk-test",
+            vocabulary=vocab,
+            output_mode="clean",
+            expand_spoken_symbols=True,
+            clean_wake_words=False,
+        )
+        # It must be a real Formatter, never the old passthrough.
+        assert isinstance(t._formatter, Formatter)
+
+        out = t.transcribe(str(wav), delete_audio=False)
+        # Golden no-slop case applied end-to-end.
+        assert out == "kubectl apply -f deployment.yaml"
+        # The LLM clean step actually ran (identity echo).
+        text_api.chat.assert_called_once()
+
+
+def test_default_construction_no_api_key_still_formats(tmp_path):
+    """No API key -> real Formatter with api_client=None: deterministic stages
+    (symbol expansion + vocab correction) still run, LLM step skipped."""
+    wav = tmp_path / "a.wav"
+    wav.write_bytes(b"RIFFfake")
+
+    vocab = Vocabulary(load_starter=False)
+    vocab.add("kubectl", said="cube cuttle")
+    eng = _make_engine("cube cuttle apply dash f deployment dot yaml")
+
+    # No api_key and no formatter -> Formatter(None, vocab).
+    t = Transcriber(
+        engine=eng,
+        vocabulary=vocab,
+        output_mode="clean",
+        expand_spoken_symbols=True,
+        clean_wake_words=False,
+    )
+    assert isinstance(t._formatter, Formatter)
+    out = t.transcribe(str(wav), delete_audio=False)
+    assert out == "kubectl apply -f deployment.yaml"

@@ -1,7 +1,8 @@
-"""Phase 2: Transcriber orchestrates engine + passthrough formatting."""
+"""Phase 2/3: Transcriber orchestrates engine + the real no-slop Formatter."""
 from unittest.mock import MagicMock
 
-from core.transcriber import Transcriber, _PassthroughFormatter
+from core.transcriber import Transcriber
+from core.formatting import Formatter
 
 
 def _engine_returning(text):
@@ -51,13 +52,21 @@ def test_transcriber_uses_formatter(tmp_path):
     t = Transcriber(engine=eng, formatter=fmt, clean_wake_words=False)
     out = t.transcribe(str(wav), delete_audio=False)
     assert out == "FORMATTED"
-    assert fmt.format.call_args.kwargs["mode"] == "technical"
+    assert fmt.format.call_args.kwargs["mode"] == "clean"
 
 
-def test_passthrough_formatter_returns_input():
-    f = _PassthroughFormatter()
-    assert f.format("xyz", mode="technical", expand_symbols=True,
-                    translate_to=None) == "xyz"
+def test_transcriber_defaults_to_real_formatter(tmp_path):
+    # With no explicit formatter and no API key, prod must still use the real
+    # Formatter (never a no-op passthrough): deterministic stages run, LLM is
+    # cleanly skipped (api_client is None).
+    wav = tmp_path / "a.wav"
+    wav.write_bytes(b"x")
+    eng = _engine_returning("apply dash f file")
+    t = Transcriber(engine=eng, clean_wake_words=False)
+    assert isinstance(t._formatter, Formatter)
+    out = t.transcribe(str(wav), delete_audio=False)
+    # Spoken-symbol expansion (deterministic) applied even with no API key.
+    assert out == "apply -f file"
 
 
 def test_transcriber_empty_engine_result_returns_none(tmp_path):
