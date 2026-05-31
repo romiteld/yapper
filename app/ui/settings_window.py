@@ -188,7 +188,10 @@ class SettingsWindow(QWidget):
             self._reduce = self._check(lay, "Reduce motion", "reduce_motion")
             self._save_hist = self._check(lay, "Save history", "save_history")
         elif section == "History":
-            self._save_hist_h = self._check(lay, "Save history", "save_history")
+            # Do NOT add a second "Save history" checkbox here — it would show
+            # a stale state when toggled from the General section (both widgets
+            # are built eagerly and there is no cross-widget sync). The single
+            # checkbox in General is the canonical control.
             open_btn = QPushButton("Open history…")
             open_btn.clicked.connect(self.open_history_requested.emit)
             lay.addWidget(open_btn)

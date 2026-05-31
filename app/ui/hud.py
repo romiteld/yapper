@@ -54,6 +54,13 @@ class RecordingHUD(QWidget):
         self._anim.setInterval(33)  # ~30 fps
         self._anim.timeout.connect(self._tick)
 
+        # Stored, cancellable hide timer: activated on 'done', cancelled on
+        # re-activation ('listening'/'transcribing') so a rapid back-to-back
+        # dictation does not hide the HUD mid-recording.
+        self._hide_timer = QTimer(self)
+        self._hide_timer.setSingleShot(True)
+        self._hide_timer.timeout.connect(self.hide)
+
         # The macOS NSWindow shim needs a native window handle, which only
         # exists after the widget is first shown — applied in showEvent.
         self._macos_behavior_applied = False
@@ -69,8 +76,13 @@ class RecordingHUD(QWidget):
         else:
             self._anim.stop()
             self._displayed_level = 0.0
-        if state == "done":
-            QTimer.singleShot(900, self.hide)
+        if state in ("listening", "transcribing"):
+            # Cancel any pending auto-hide from the previous 'done' transition.
+            self._hide_timer.stop()
+        elif state == "done":
+            # Arm the auto-hide; do NOT stop on 'idle' because the controller
+            # emits IDLE right after DONE — stopping there would kill the timer.
+            self._hide_timer.start(900)
         self.update()
 
     def update_level(self, rms: float) -> None:
@@ -86,6 +98,8 @@ class RecordingHUD(QWidget):
         self.update()
 
     def show_centered_bottom(self) -> None:
+        # Cancel any pending auto-hide before re-showing.
+        self._hide_timer.stop()
         screen = QApplication.primaryScreen()
         if screen is not None:
             geom = screen.availableGeometry()

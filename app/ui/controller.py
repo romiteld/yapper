@@ -45,12 +45,16 @@ class Controller:
         on_result: Optional[Callable[[str], None]] = None,
         on_error: Optional[Callable[[str], None]] = None,
         history: Optional[TranscriptionHistory] = None,
+        dry_run: bool = False,
     ):
         self.settings = settings
         self._on_state = on_state
         self._on_level = on_level
         self._on_result = on_result
         self._on_error = on_error
+        # When dry_run=True, the transcription result is delivered via on_result
+        # but NOT typed into the user's focused field. Used by the wizard mic test.
+        self._dry_run = dry_run
 
         self.state = ControllerState.IDLE
         self._recorder: Optional[AudioRecorder] = None
@@ -197,17 +201,25 @@ class Controller:
                 expand_symbols=bool(self.settings.get("expand_spoken_symbols", True)),
                 translate_to=translate_to,
             )
-            method = self.settings.get("insertion_method", "paste")
-            typer = self._typer_factory()
-            if typer.type_text(final, method=method):
+            if self._dry_run:
+                # Dry-run mode (e.g. wizard mic test): deliver the result but
+                # do NOT type it into the user's focused field.
                 self.sounds.success()
                 self._set_state(ControllerState.DONE)
                 if self._on_result:
                     self._on_result(final)
-                self._record_history(final, duration, translate_to)
             else:
-                self._emit_error("Could not insert text. Check Accessibility permission.")
-                return
+                method = self.settings.get("insertion_method", "paste")
+                typer = self._typer_factory()
+                if typer.type_text(final, method=method):
+                    self.sounds.success()
+                    self._set_state(ControllerState.DONE)
+                    if self._on_result:
+                        self._on_result(final)
+                    self._record_history(final, duration, translate_to)
+                else:
+                    self._emit_error("Could not insert text. Check Accessibility permission.")
+                    return
         except Exception as exc:  # noqa: BLE001 - surface to UI, never crash loop
             self._emit_error(f"Transcription failed: {exc}")
             return

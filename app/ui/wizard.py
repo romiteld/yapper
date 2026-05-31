@@ -196,18 +196,37 @@ class SetupWizard(QWidget):
         self._mic_result_ready.emit(
             f"Heard: {text[:48]}" if text else "No speech detected")
 
+    def _mic_error(self, message: str) -> None:
+        """Controller on_error callback — may run on the worker thread."""
+        self._mic_result_ready.emit(f"Mic test failed: {message}")
+
+    def _mic_fallback(self) -> None:
+        """Fallback timer slot: surface a message if no result arrived yet."""
+        if hasattr(self, "_mic_result") and \
+                self._mic_result.text() == "Recording 2s… speak now":
+            self._mic_result.setText("No result — check mic and API key")
+
     def _run_mic_test(self) -> None:
         # Real, short capture + transcription so the user gets a success moment.
+        # Uses dry_run=True so the result is NOT typed into the user's active field.
         try:
             from .controller import Controller
             self._mic_result.setText("Recording 2s… speak now")
             # A lightweight one-shot using the same pipeline. Keep a reference
-            # on self so it isn't garbage-collected mid-recording, and route the
-            # worker-thread result through a queued signal (thread-safe).
+            # on self so it isn't garbage-collected mid-recording, route the
+            # worker-thread result through a queued signal (thread-safe), and
+            # wire on_error so missing-key / API failures surface to the UI.
             self._mic_controller = Controller(
-                self.settings, on_result=self._on_mic_result)
+                self.settings,
+                on_result=self._on_mic_result,
+                on_error=self._mic_error,
+                dry_run=True,  # do NOT type the transcription into the focused field
+            )
             self._mic_controller.start_recording()
             QTimer.singleShot(2000, self._mic_controller.stop_recording)
+            # Fallback: if neither on_result nor on_error fired (e.g. silence /
+            # empty transcription that returns IDLE silently), surface a message.
+            QTimer.singleShot(6000, self._mic_fallback)
         except Exception as exc:  # noqa: BLE001
             self._mic_result.setText(f"Mic test failed: {exc}")
 

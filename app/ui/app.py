@@ -88,10 +88,7 @@ class YapperApp:
         self._bridge.error.connect(self._on_error)
 
         self._hud = None
-        if self.settings.get("show_hud", True):
-            from .hud import RecordingHUD
-            self._hud = RecordingHUD(reduce_motion=self.settings.get("reduce_motion", False))
-            self._bridge.level.connect(self._hud.update_level)
+        self._ensure_hud()
 
         self.tray = self._build_tray()
         self._wizard = None
@@ -128,6 +125,8 @@ class YapperApp:
         # (Qt parenting alone isn't enough to keep the PySide wrappers alive).
         self._submenus: list = []
         self._action_groups: list = []
+        # (group, key) pairs for re-syncing checkmarks after a settings save.
+        self._toggle_groups: list = []
         # Quick toggles that update settings live + persist.
         self._engine_group = self._add_choice_submenu(
             menu, "Engine", ENGINES, "engine")
@@ -162,25 +161,57 @@ class YapperApp:
         group = QActionGroup(sub)
         group.setExclusive(True)
         self._action_groups.append(group)
+        # Record (group, key) so _sync_tray_menu() can re-check after a settings save.
+        self._toggle_groups.append((group, key))
         current = self.settings.get(key)
         for value in values:
             label = labels.get(value, value) if labels else value
             act = QAction(label or "No Translation", sub)
             act.setCheckable(True)
             act.setData(value)
-            act.setChecked(value == current)
+            act.setChecked((value or "") == (current or ""))
             act.triggered.connect(
                 lambda _checked=False, v=value, k=key: self._on_quick_toggle(k, v))
             group.addAction(act)
             sub.addAction(act)
         return group
 
+    def _sync_tray_menu(self) -> None:
+        """Re-check tray submenu actions to reflect the current settings."""
+        for group, key in self._toggle_groups:
+            current = self.settings.get(key)
+            for act in group.actions():
+                act.setChecked((act.data() or "") == (current or ""))
+
     def _on_quick_toggle(self, key: str, value) -> None:
         """Apply a tray quick-toggle: set + persist + reload runtime state."""
         self.settings.set(key, value)
         self.settings.save()
         self.controller.reload_settings()
+        self._sync_tray_menu()
         logger.info("Tray quick-toggle: %s = %r", key, value)
+
+    def _ensure_hud(self) -> None:
+        """Create, destroy, or update the HUD to match current settings."""
+        want = self.settings.get("show_hud", True)
+        reduce = self.settings.get("reduce_motion", False)
+        if want and self._hud is None:
+            from .hud import RecordingHUD
+            self._hud = RecordingHUD(reduce_motion=reduce)
+            self._bridge.level.connect(self._hud.update_level)
+        elif not want and self._hud is not None:
+            try:
+                self._bridge.level.disconnect(self._hud.update_level)
+            except (RuntimeError, TypeError):
+                pass
+            self._hud.hide()
+            self._hud.deleteLater()
+            self._hud = None
+        elif self._hud is not None:
+            self._hud.reduce_motion = reduce
+            # Re-apply the current state so the animation timer reflects the
+            # new reduce_motion value immediately.
+            self._hud.set_state(self._hud.state)
 
     def _start_hotkeys(self) -> None:
         self.hotkeys = HotkeyManager(
@@ -233,6 +264,8 @@ class YapperApp:
         if self.hotkeys is not None:
             self.hotkeys.set_mode(self.settings.get("activation_mode", "push_to_talk"))
             self.hotkeys.set_hotkey(self.settings.get("hotkey", "f8"))
+        self._sync_tray_menu()
+        self._ensure_hud()
 
     def quit(self) -> None:
         if self.hotkeys is not None:

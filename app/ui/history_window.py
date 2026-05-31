@@ -6,9 +6,11 @@
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
 from typing import List, Optional
 
+from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -31,6 +33,11 @@ from core import (
 from . import theme
 
 logger = get_logger("history_window")
+
+
+class _ReprocessBridge(QObject):
+    """Marshals the worker-thread reprocess result back to the GUI thread."""
+    result_ready = Signal(str)
 
 
 def filter_records(records: List[TranscriptionRecord], query: str) -> List[TranscriptionRecord]:
@@ -77,6 +84,10 @@ class HistoryWindow(QWidget):
         self.setWindowTitle("Yapper — History")
         self.setStyleSheet(theme.qss())
         self.resize(640, 520)
+        # Bridge for off-GUI-thread reprocess results.
+        self._reprocess_bridge = _ReprocessBridge()
+        self._reprocess_bridge.result_ready.connect(
+            self._on_reprocess_done, Qt.ConnectionType.QueuedConnection)
 
         root = QVBoxLayout(self)
         self._search = QLineEdit(placeholderText="Search transcriptions…")
@@ -97,6 +108,8 @@ class HistoryWindow(QWidget):
             btn = QPushButton(text)
             btn.clicked.connect(slot)
             row.addWidget(btn)
+            if text == "Reprocess":
+                self._reprocess_btn = btn
         root.addLayout(row)
         root.addWidget(QLabel("© 2026 Cloudelipute", objectName="Muted"))
 
@@ -130,12 +143,34 @@ class HistoryWindow(QWidget):
 
     def _reprocess_selected(self) -> None:
         """Re-run the selected text through the Formatter with current settings,
-        then insert the reprocessed result at the cursor."""
+        then insert the reprocessed result at the cursor.
+
+        The network call (reprocess_text) is offloaded to a daemon thread so
+        the GUI stays responsive; TextTyper().type_text() and any UI updates
+        happen back on the GUI thread via a queued signal.
+        """
         text = self._selected_text()
         if not text:
             return
-        result = reprocess_text(text, self.settings)
+        # Disable the button while reprocessing to avoid stacking requests.
+        btn = self._reprocess_btn
+        btn.setEnabled(False)
+        btn.setText("Reprocessing…")
+        settings_snapshot = self.settings
+        bridge = self._reprocess_bridge
+
+        def _worker():
+            result = reprocess_text(text, settings_snapshot)
+            bridge.result_ready.emit(result)
+
+        threading.Thread(target=_worker, daemon=True,
+                         name="HistoryReprocess").start()
+
+    def _on_reprocess_done(self, result: str) -> None:
+        """GUI-thread slot: type the reprocessed text and re-enable the button."""
         TextTyper().type_text(result, method="paste")
+        self._reprocess_btn.setEnabled(True)
+        self._reprocess_btn.setText("Reprocess")
 
     def _export(self) -> None:
         path, _ = QFileDialog.getSaveFileName(
