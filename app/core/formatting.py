@@ -31,43 +31,136 @@ _DOT_SUFFIXES = [
 ]
 _DOT_SUFFIX_RE = "|".join(sorted(_DOT_SUFFIXES, key=len, reverse=True))
 
-# Common words that, when they precede "dash <letter>", indicate ordinary
-# prose ("a dash of salt", "he made a dash", "grade dash a") rather than a CLI
-# flag. The single-letter dash rule is suppressed after any of these.
+# Common words that, when they precede "dash <letter>" or "dash dash <word>",
+# indicate ordinary prose rather than a CLI flag.  The dash rules are
+# suppressed after any of these.
 _DASH_PROSE_PRECEDERS = frozenset({
-    "a", "an", "the", "of", "in", "made", "that", "this", "his", "her", "your",
+    # Articles, prepositions, and determiners.
+    "a", "an", "the", "of", "in", "that", "this", "his", "her", "your",
+    # Common verbs that appear in prose "X dash dash Y" patterns.
+    "made", "was", "is", "are", "be", "been", "had", "has", "have",
+    # Nouns/adjectives that read as prose before "dash dash".
+    "plan", "score", "mark", "note", "long", "mad", "em", "quick", "straight",
+    "even", "odd", "just", "set",
 })
 
 # If the letter after "dash" is itself a standalone English word/article, the
 # phrase reads as prose ("grade dash a", "... dash i ...") — not a CLI flag.
 _DASH_PROSE_LETTERS = frozenset({"a", "i"})
 
+# Positive-evidence CLI verbs/commands: the single-dash rule fires ONLY when
+# the preceding token is one of these (or when there is no preceding word, i.e.
+# the flag appears at the start of the utterance).  This prevents "she dash B",
+# "plan dash B", "vitamin dash C" from being mangled.
+_DASH_CLI_VERBS = frozenset({
+    # shell/CLI verbs
+    "run", "use", "with", "exec", "flag", "apply", "commit", "push", "pull",
+    "build", "test", "install", "deploy", "serve", "start", "stop", "add",
+    "remove", "create", "delete", "update", "init", "clone", "checkout",
+    "merge", "rebase", "fetch", "diff", "log", "status", "reset",
+    # common CLI binaries
+    "git", "kubectl", "docker", "npm", "yarn", "pip", "python", "python3",
+    "ls", "cp", "mv", "rm", "cat", "grep", "find", "curl", "ssh", "scp",
+    "tar", "rsync", "make", "cmake", "go", "cargo", "rustc", "java", "mvn",
+    "uv", "pipx", "brew", "apt", "yum", "dnf", "pacman",
+})
+
 
 def _expand_single_dash(match: "re.Match") -> str:
-    """Replace "dash <letter>" -> "-<letter>" unless it reads as prose.
+    """Replace "dash <letter>" -> "-<letter>" only in a clear CLI context.
 
-    ``match`` captures an optional preceding word so we can suppress the
-    conversion right after an article/preposition/common prose word, or when
-    the flag "letter" is itself a standalone English article (a / i).
+    The rule fires when:
+      - There is no preceding word (flag at the start of the utterance), OR
+      - The preceding word is a known CLI command/verb (_DASH_CLI_VERBS).
+
+    It is suppressed when:
+      - The preceding word is a prose word (_DASH_PROSE_PRECEDERS), OR
+      - The preceding word is NOT a recognized CLI cue (default-safe), OR
+      - The flag letter is a standalone English article (a / i).
     """
     preceder = (match.group("pre") or "").lower()
     letter = match.group("letter")
-    if preceder in _DASH_PROSE_PRECEDERS or letter.lower() in _DASH_PROSE_LETTERS:
-        return match.group(0)  # leave untouched
+
+    # Prose letter guard: "grade dash a" / "plan dash i" -> untouched.
+    if letter.lower() in _DASH_PROSE_LETTERS:
+        return match.group(0)
+
+    # No preceding word -> flag at start of utterance; convert.
+    if not preceder:
+        return f"-{letter}"
+
+    # Preceding word is a known prose word -> leave untouched.
+    if preceder in _DASH_PROSE_PRECEDERS:
+        return match.group(0)
+
+    # Preceding word is a recognized CLI command/verb -> convert.
+    if preceder in _DASH_CLI_VERBS:
+        prefix = match.group("pre")
+        space = match.group("presp") or ""
+        return f"{prefix}{space}-{letter}"
+
+    # Default: unknown preceding word — do NOT convert (avoids "she dash B",
+    # "plan dash B", "vitamin dash C", "grade dash B", etc.).
+    return match.group(0)
+
+
+def _expand_double_dash(match: "re.Match") -> str:
+    """Replace "dash dash <word>" -> "--<word>" unless a prose word precedes it.
+
+    Suppressed when the preceding word is in _DASH_PROSE_PRECEDERS (common
+    articles, prepositions, and other prose words), so "the score was dash dash
+    even", "plan dash dash backup" and "a long dash dash mark" are left alone.
+    Converts for CLI contexts like "dash dash help", "git commit dash dash amend",
+    "kubectl get pods dash dash all".
+    """
+    pre = (match.group("pre") or "").lower()
+    word = match.group("word")
+    if pre in _DASH_PROSE_PRECEDERS:
+        return match.group(0)  # prose — leave untouched
     prefix = match.group("pre")
     space = match.group("presp") or ""
-    return f"{prefix}{space}-{letter}" if prefix else f"-{letter}"
+    return f"{prefix}{space}--{word}" if prefix else f"--{word}"
+
+
+# Prose words that, when they immediately follow "press enter" or
+# "insert new line", indicate the phrase is prose rather than a dictation
+# command (e.g. "press enter to continue", "I press enter the room").
+_NEWLINE_PROSE_FOLLOWERS = frozenset({
+    "to", "the", "a", "an", "your", "my", "his", "her",
+    "this", "that", "key", "button",
+})
+
+
+def _expand_newline(match: "re.Match") -> str:
+    """Replace "press enter" / "insert new line" with \\n unless prose follows.
+
+    Prose guard: if the next word is in _NEWLINE_PROSE_FOLLOWERS (e.g.
+    "press enter to continue", "press enter the room") the phrase is left
+    unchanged.  When converting, any captured following word is preserved so
+    it is not swallowed (e.g. "first line press enter second" -> "first line\\nsecond").
+    """
+    follower = (match.group("after") or "").strip()
+    if follower.lower() in _NEWLINE_PROSE_FOLLOWERS:
+        return match.group(0)  # prose: leave untouched
+    if follower:
+        return f"\n{follower}"
+    return "\n"
 
 
 # Ordered, conservative spoken-symbol rules. Each is (compiled_pattern,
 # replacement) where replacement is a string or a callable. Order matters —
 # longer/structural cues are matched before single tokens. Every rule fires
 # ONLY on an unambiguous cue so ordinary prose is never corrupted.
+_DASH_DASH_RE = re.compile(
+    r"(?:(?P<pre>\w+)(?P<presp>\s+))?\bdash dash (?P<word>\w+)\b",
+    re.IGNORECASE,
+)
 _SYMBOL_RULES: List[Tuple[re.Pattern, Union[str, Callable]]] = [
-    # Long flags: "dash dash help" -> "--help" (unambiguous: double "dash").
-    (re.compile(r"\bdash dash (\w+)\b", re.IGNORECASE), r"--\1"),
-    # Short flags: "dash f" -> "-f" (single letter), guarded against prose by
-    # inspecting the preceding word (see _expand_single_dash).
+    # Long flags: "dash dash help" -> "--help", guarded against prose by
+    # inspecting the preceding word (see _expand_double_dash).
+    (_DASH_DASH_RE, _expand_double_dash),
+    # Short flags: "dash f" -> "-f" (single letter), only in a CLI context
+    # (preceding word must be a known command/verb, see _expand_single_dash).
     (
         re.compile(
             r"(?:(?P<pre>\w+)(?P<presp>\s+))?\bdash\s+(?P<letter>[a-zA-Z])\b",
@@ -85,17 +178,27 @@ _SYMBOL_RULES: List[Tuple[re.Pattern, Union[str, Callable]]] = [
         r"\1.\2",
     ),
     # Backtick pair: "backtick <word(s)> backtick" -> "`<word(s)>`".
-    # Requires both backtick cues, so prose is safe.
+    # Requires BOTH backtick cues, so a lone "backtick" in prose is safe.
+    # (The single-backtick rule was removed: it mangled "the backtick of doom"
+    # and was fully redundant with this paired rule.)
     (re.compile(r"\bbacktick (\w+(?:\s+\w+){0,4}) backtick\b", re.IGNORECASE), r"`\1`"),
-    # Single standalone backtick cue (explicit word "backtick").
-    (re.compile(r"\bbacktick\b", re.IGNORECASE), "`"),
-    # Parentheses — require the explicit word "paren".
-    (re.compile(r"\bopen paren\b", re.IGNORECASE), "("),
-    (re.compile(r"\bclose paren\b", re.IGNORECASE), ")"),
+    # Parentheses — require a MATCHED pair of "open paren" / "close paren"
+    # cues in the same utterance so standalone cues in prose are safe.
+    (
+        re.compile(r"\bopen paren\b(.*?)\bclose paren\b", re.IGNORECASE | re.DOTALL),
+        r"(\1)",
+    ),
     # Newline — ONLY on an explicit standalone trigger, never the bare
     # "new line" (which mangles "a new line of thinking"). "press enter" and
-    # "insert new line" are unambiguous dictation commands.
-    (re.compile(r"\b(?:press enter|insert new line)\b", re.IGNORECASE), "\n"),
+    # "insert new line" are dictation commands, but they are suppressed when
+    # followed by a prose word like "to", "the", "a", etc.
+    (
+        re.compile(
+            r"\b(?:press enter|insert new line)\b(?:\s+(?P<after>\w+))?",
+            re.IGNORECASE,
+        ),
+        _expand_newline,
+    ),
 ]
 
 
