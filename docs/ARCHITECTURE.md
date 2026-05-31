@@ -196,7 +196,42 @@ Deterministic stages (symbols, vocabulary) are tuned so casual speech passes thr
 
 ---
 
-## 6. Package layout
+## 6. UI surfaces & actions
+
+What the user actually sees and clicks. The menu‑bar/tray is the always‑present control; the wizard runs once; settings/history open on demand; the HUD appears only during dictation.
+
+```mermaid
+flowchart TB
+    subgraph Tray["Menu-bar / tray · QSystemTrayIcon (always present)"]
+        t_eng["Engine: Cloud / Local"]
+        t_mode["Mode: Clean / Polished / Verbatim"]
+        t_lang["Language: off / 40+"]
+        t_set["Settings…"]
+        t_hist["History…"]
+        t_quit["Quit"]
+    end
+    subgraph HUD["Recording HUD (during dictation)"]
+        h["idle to listening (live level ring) to transcribing to done"]
+    end
+    subgraph Wizard["First-run wizard (once)"]
+        w["Welcome to Engine to Connect to Permissions (mac) to Hotkey and Voice to Done"]
+    end
+    subgraph Settings["Settings sidebar (applied on Save)"]
+        s["General / Engine and Models / Vocabulary / Formatting / Hotkeys / Audio / History / About"]
+    end
+    subgraph Hist["History window"]
+        hi["search / copy / re-insert / reprocess / clear / export"]
+    end
+    t_set --> Settings
+    t_hist --> Hist
+```
+
+- **Tray quick toggles** flip engine / output mode / language inline and persist immediately; everything else lives in **Settings**, where edits are buffered and applied only on **Save** (close‑without‑save discards).
+- **No GUI required:** `python -m app` runs the tray app; `python -m app --once [--seconds N]` does a single scripted record→type with no tray/HUD.
+
+---
+
+## 7. Package layout
 
 ```
 app/
@@ -229,7 +264,7 @@ app/
 
 ---
 
-## 7. Key design decisions
+## 8. Key design decisions
 
 - **One Qt event loop** (PySide6) for tray + HUD + wizard + settings, avoiding the macOS main‑thread contention that a separate tray library would create.
 - **`pynput`** for both global hotkey capture **and** keystroke/paste injection, cross‑platform (replaced the Windows‑only `keyboard`).
@@ -239,7 +274,7 @@ app/
 - **Faithful formatting** with deterministic, conservative text transforms plus a strict no‑paraphrase LLM prompt.
 - **Clone‑first** distribution via `uv`; unsigned `.app`/`.dmg`/`.zip` attached to Releases as a convenience.
 
-## 8. Cross-platform notes
+## 9. Cross-platform notes
 
 | Concern | macOS | Windows |
 |---|---|---|

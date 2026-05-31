@@ -142,6 +142,18 @@ xattr -dr com.apple.quarantine /Applications/Yapper.app
 
 ---
 
+## 🕹️ Using it
+
+- **Dictate:** hold your hotkey (push‑to‑talk), speak, release — the text is pasted at your cursor. Toggle and wake‑word activation are selectable too.
+- **Menu‑bar / tray:** quick‑toggle the **engine** (cloud/local), **output mode** (Clean/Polished/Verbatim), and **language** inline; open **Settings** or **History**; quit.
+- **Settings** (sidebar): General · Engine & Models · **Vocabulary** (teach it your terms) · **Formatting** (mode + spoken symbols) · Hotkeys · Audio · History · About. Edits apply on **Save**.
+- **History:** search past dictations, copy, re‑insert, **reprocess** with current settings, clear, or export.
+- **Scripted / no GUI:** `uv run python -m app --once` does a single record→type; `--seconds N` sets the recording window.
+
+📐 See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for the full architecture drawings (system overview, threading model, dictation sequence, engine abstraction, formatting pipeline, and the UI‑surface map).
+
+---
+
 ## 🔐 Permissions (macOS)
 
 macOS only re-reads permissions **at process start** — after granting anything, **quit & relaunch Yapper**.
