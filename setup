@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Yapper clone-first setup — creates .venv and installs locked deps via uv.
+# © 2026 Cloudelipute
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+if ! command -v uv >/dev/null 2>&1; then
+  echo "Error: 'uv' is not installed."
+  echo "Install it: curl -LsSf https://astral.sh/uv/install.sh | sh"
+  echo "Docs: https://docs.astral.sh/uv/"
+  exit 1
+fi
+
+echo "Syncing dependencies with uv..."
+# Base sync. On macOS also pull the pyobjc permission helpers.
+if [ "$(uname -s)" = "Darwin" ]; then
+  uv sync --extra macos
+else
+  uv sync
+fi
+
+echo
+echo "Done. Start Yapper with:  ./run.sh   (or ./run.command on macOS)"
+echo "For on-device models:     uv sync --extra local"
