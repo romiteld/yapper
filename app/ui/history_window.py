@@ -44,7 +44,7 @@ def filter_records(records: List[TranscriptionRecord], query: str) -> List[Trans
 def reprocess_text(text: str, settings: Settings) -> str:
     """Re-run stored text through the Formatter with the CURRENT settings.
 
-    Reuses the no-slop pipeline (spoken-symbol expansion, vocabulary, mode
+    Reuses the faithful formatting pipeline (spoken-symbol expansion, vocabulary, mode
     cleanup, translation) so a user can re-clean or re-translate a past
     transcription without re-recording. Returns the original text unchanged if
     formatting fails (e.g. no API key) — never raises to the UI.

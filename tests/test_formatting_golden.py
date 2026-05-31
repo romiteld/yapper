@@ -1,4 +1,4 @@
-"""Golden no-slop cases for the full formatting pipeline (LLM mocked identity)."""
+"""Golden faithful cases for the full formatting pipeline (LLM mocked identity)."""
 from unittest.mock import MagicMock
 
 import pytest

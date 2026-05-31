@@ -1,5 +1,5 @@
 """
-Yapper No-Slop Formatting Subsystem
+Yapper Faithful Formatting Subsystem
 ===================================
 Spoken-symbol expansion and output-mode cleanup for a general-purpose
 dictation tool. Types what the user actually said — their wording, voice,
@@ -132,7 +132,7 @@ def expand_spoken_symbols(text: str) -> str:
 
 class Formatter:
     """
-    Output formatter for the no-slop pipeline.
+    Output formatter for the faithful formatting pipeline.
 
     Pipeline order (after raw transcription, wake-word stripping happens
     upstream):
@@ -169,7 +169,7 @@ class Formatter:
         translate_to: Optional[str],
     ) -> str:
         """
-        Run the no-slop pipeline.
+        Run the faithful formatting pipeline.
 
         Args:
             raw_text: Raw transcription text.

@@ -1,4 +1,4 @@
-"""Phase 2/3: Transcriber orchestrates engine + the real no-slop Formatter."""
+"""Phase 2/3: Transcriber orchestrates engine + the real faithful Formatter."""
 from unittest.mock import MagicMock
 
 from core.transcriber import Transcriber

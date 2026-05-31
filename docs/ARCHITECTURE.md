@@ -34,7 +34,7 @@ flowchart TB
         hotkeys["hotkeys<br/>pynput PTT/toggle"]
         audio["audio + vad<br/>sounddevice"]
         engines["engines<br/>cloud / local STT"]
-        fmt["formatting + vocabulary<br/>faithful 'no-slop'"]
+        fmt["formatting + vocabulary<br/>faithful, never reworded"]
         typer["typer<br/>clipboard-paste"]
         hist["history"]
         notif["notifications"]
@@ -171,7 +171,7 @@ classDiagram
 
 ---
 
-## 5. The faithful formatting pipeline ("no slop")
+## 5. The faithful formatting pipeline
 
 The product promise: type what you actually said — your wording, voice, and slang **and** any jargon/code — and never reword it. Cleanup fixes only mechanics.
 

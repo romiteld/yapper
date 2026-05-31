@@ -20,7 +20,7 @@ def test_schema_validates_output_mode():
     assert validator("polished") is True
     assert validator("verbatim") is True
     assert validator("technical") is False  # legacy name no longer valid
-    assert validator("slop") is False
+    assert validator("bogus") is False
 
 
 def test_schema_validates_expand_spoken_symbols_and_vocabulary():

@@ -4,7 +4,7 @@
 
 **Push-to-talk dictation that types what you actually said — for prompting AI agents, writing docs, or just messaging.**
 
-Keeps your words (and your jargon) intact — *no AI slop*. Record your voice, transcribe it, fix only the mechanics, and paste it at your cursor.
+Keeps your words (and your jargon) intact — *never reworded*. Record your voice, transcribe it, fix only the mechanics, and paste it at your cursor.
 Cross-platform: **macOS (Apple Silicon)** and **Windows**, one codebase.
 
 `© 2026 Cloudelipute` · MIT License · v4.0.0
@@ -18,7 +18,7 @@ Cross-platform: **macOS (Apple Silicon)** and **Windows**, one codebase.
 | | |
 |---|---|
 | 🎯 **Push-to-talk** | Hold a key to dictate. Toggle and wake-word modes too. |
-| 🧠 **No "AI slop"** | Types your *actual* words — wording, tone, slang **and** jargon/code kept **verbatim**, never paraphrased. Say "*um so like i'll be there in ten*" and it stays your sentence; say "*cube cuttle apply dash f deployment dot yaml*" and you get `kubectl apply -f deployment.yaml`. |
+| 🎯 **Faithful, never reworded** | Types your *actual* words — wording, tone, slang **and** jargon/code kept **verbatim**, never paraphrased. Say "*um so like i'll be there in ten*" and it stays your sentence; say "*cube cuttle apply dash f deployment dot yaml*" and you get `kubectl apply -f deployment.yaml`. |
 | 🎚️ **Output modes** | **Clean** (default — faithful: fix only caps/punctuation + fillers, keep your words) · **Polished** (opt-in tidy rewrite) · **Verbatim** (raw, no AI). |
 | 🔤 **Spoken symbols** | "dash dash help" → `--help`, "dot py" → `.py`, "open paren" → `(`. |
 | 📚 **Vocabulary** | Teach it your terms: "cube cuttle" → `kubectl`, "next J S" → `Next.js`. CSV import. |
@@ -48,7 +48,7 @@ flowchart TB
     CTRL --> hotkeys["hotkeys<br/>(pynput) PTT/toggle"]
     CTRL --> audio["audio<br/>(sounddevice + vad)"]
     CTRL --> engines["engines (STT)<br/>cloud / local"]
-    CTRL --> formatting["formatting<br/>no-slop / vocab / mode"]
+    CTRL --> formatting["formatting<br/>faithful · vocab · mode"]
     CTRL --> typer["typer<br/>(pynput / clipboard)"]
     CTRL --> hist["history"]
     hotkeys --> perms["permissions<br/>(mac TCC)"]

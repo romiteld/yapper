@@ -1,4 +1,4 @@
-"""Tests for the no-slop formatting subsystem."""
+"""Tests for the faithful formatting subsystem."""
 from app.core.formatting import expand_spoken_symbols
 
 

@@ -3,7 +3,7 @@ Yapper Transcriber
 ==================
 Thin orchestrator: engine.transcribe() -> wake-word clean -> formatting.
 
-Phase 3: supports Vocabulary + Formatter for no-slop pipeline. Vocabulary
+Phase 3: supports Vocabulary + Formatter for faithful formatting pipeline. Vocabulary
 builds the Whisper prompt bias and performs fuzzy correction; Formatter runs
 spoken-symbol expansion, vocabulary correction, and optional LLM cleanup.
 
@@ -26,7 +26,7 @@ logger = get_logger("transcriber")
 class Transcriber:
     """Orchestrates transcription over a TranscriptionEngine + a Formatter.
 
-    In production the real no-slop ``Formatter`` always runs: spoken-symbol
+    In production the real faithful ``Formatter`` always runs: spoken-symbol
     expansion + vocabulary correction are deterministic and run even with no
     API key; the LLM cleanup/translation steps only run when a text API client
     is available.
@@ -79,7 +79,7 @@ class Transcriber:
         # the deterministic stages (symbol expansion, correction) have terms.
         self._vocabulary = vocabulary if vocabulary is not None else Vocabulary()
 
-        # Build the real no-slop Formatter by default. The text API client
+        # Build the real faithful Formatter by default. The text API client
         # drives the LLM cleanup/translation steps; with no API key it is None
         # and the Formatter cleanly skips those steps (deterministic only).
         if formatter is not None:

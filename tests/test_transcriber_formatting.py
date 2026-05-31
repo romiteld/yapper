@@ -31,7 +31,7 @@ def _make_transcriber_with_formatter(raw_transcription, vocab, output_mode="clea
     return t, eng, api
 
 
-def test_transcribe_runs_noslop_pipeline(tmp_path):
+def test_transcribe_runs_faithful_pipeline(tmp_path):
     wav = tmp_path / "a.wav"
     wav.write_bytes(b"RIFFfake")
     vocab = Vocabulary(load_starter=False)
@@ -89,7 +89,7 @@ def test_default_construction_uses_real_formatter_end_to_end(tmp_path):
     must use a real Formatter and actually apply output_mode + vocabulary.
 
     The internally-built text APIClient is patched so its chat() echoes the
-    user content (clean-mode identity), proving the golden no-slop case works
+    user content (clean-mode identity), proving the golden faithful case works
     end-to-end through Transcriber.transcribe()."""
     wav = tmp_path / "a.wav"
     wav.write_bytes(b"RIFFfake")
@@ -116,7 +116,7 @@ def test_default_construction_uses_real_formatter_end_to_end(tmp_path):
         assert isinstance(t._formatter, Formatter)
 
         out = t.transcribe(str(wav), delete_audio=False)
-        # Golden no-slop case applied end-to-end.
+        # Golden faithful case applied end-to-end.
         assert out == "kubectl apply -f deployment.yaml"
         # The LLM clean step actually ran (identity echo).
         text_api.chat.assert_called_once()

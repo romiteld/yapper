@@ -89,10 +89,10 @@ HOTKEYS: List[str] = [
 ]
 
 # =============================================================================
-# OUTPUT MODES (no-slop formatting)
+# OUTPUT MODES (faithful formatting)
 # =============================================================================
 
-# Output formatting modes for the no-slop subsystem. Yapper is a
+# Output formatting modes for the faithful-formatting subsystem. Yapper is a
 # general-purpose dictation tool (agent prompts, docs, everyday messaging),
 # so the default keeps the user's own wording — it never paraphrases.
 # clean     = (default) fix only caps/punctuation + remove fillers; keep the
@@ -150,7 +150,7 @@ DEFAULT_SETTINGS: Dict[str, any] = {
     "translate_to": "",   # Target language (empty = no translation)
     "fix_grammar": True,  # Auto-correct grammar when not translating
 
-    # No-slop formatting (Phase 3)
+    # Faithful formatting (Phase 3)
     "output_mode": "clean",           # clean | polished | verbatim
     "expand_spoken_symbols": True,    # expand "dash dash help" -> "--help"
     "vocabulary": [],                 # list of {said, typed} term dicts
