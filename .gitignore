@@ -42,3 +42,7 @@ python/
 
 # Brainstorming visual companion
 .superpowers/
+
+# AI-assistant artifacts — not for the public repo
+CLAUDE.md
+docs/superpowers/
