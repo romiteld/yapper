@@ -73,6 +73,45 @@ def test_start_recording_ignored_when_already_listening(settings):
     fake_rec.start.assert_called_once()
 
 
+# ---- HIGH-1: on_level wiring (HUD ring) ------------------------------------
+
+def test_recorder_factory_receives_on_level(settings):
+    captured = {}
+
+    def factory(**kw):
+        captured.update(kw)
+        rec = MagicMock()
+        rec.start.return_value = True
+        return rec
+
+    c = Controller(settings)
+    c._recorder_factory = factory
+    c.start_recording()
+    assert "on_level" in captured
+    assert callable(captured["on_level"])
+
+
+def test_level_callback_forwarded_while_listening(settings):
+    levels = []
+    fake_rec = MagicMock()
+    fake_rec.start.return_value = True
+    c = Controller(settings, on_level=levels.append)
+    c._recorder_factory = lambda **kw: fake_rec
+    c.start_recording()
+    # Simulate the audio thread emitting RMS chunks.
+    c._emit_level(0.5)
+    c._emit_level(0.8)
+    assert levels == [0.5, 0.8]
+
+
+def test_level_callback_suppressed_when_not_listening(settings):
+    levels = []
+    c = Controller(settings, on_level=levels.append)
+    # idle -> a stray late callback must not animate the HUD.
+    c._emit_level(0.9)
+    assert levels == []
+
+
 # ---- Task 4: full pipeline ------------------------------------------------
 
 def _wired_controller(settings, raw="raw text", formatted="kubectl get pods"):
@@ -89,7 +128,10 @@ def _wired_controller(settings, raw="raw text", formatted="kubectl get pods"):
     fake_typer = MagicMock()
     fake_typer.type_text.return_value = True
 
-    c = Controller(settings)
+    # Keep history writes inside the test's temp dir, never the real logs/.
+    from core import TranscriptionHistory
+    hist = TranscriptionHistory(history_dir=settings.path.parent, enabled=True)
+    c = Controller(settings, history=hist)
     c._recorder_factory = lambda **kw: fake_rec
     c._engine_factory = lambda: fake_engine
     c._formatter_factory = lambda: fake_formatter

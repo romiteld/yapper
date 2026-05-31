@@ -13,7 +13,7 @@ Public API is unchanged: start() -> bool, stop() -> str|None,
 import tempfile
 import threading
 import wave
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 from .logger import get_logger
 
@@ -23,6 +23,31 @@ SAMPLE_RATE = 16000  # 16kHz - optimal for Whisper
 CHANNELS = 1         # Mono
 CHUNK_SIZE = 1024    # sounddevice blocksize
 FORMAT_WIDTH = 2     # int16 = 2 bytes/sample
+
+# Full-scale amplitude for int16 PCM; used to normalize RMS to 0.0-1.0.
+_INT16_FULL_SCALE = 32768.0
+
+
+def chunk_rms_level(indata) -> float:
+    """Return a normalized 0.0-1.0 RMS level for an int16 audio chunk.
+
+    Accepts a numpy int16 ndarray (sounddevice callback) or raw bytes. Returns
+    0.0 for empty/invalid input. The result is the RMS amplitude divided by the
+    int16 full-scale, so it maps quiet->0.0 and loud->~1.0 for HUD display.
+    """
+    try:
+        import numpy as np
+    except Exception:  # numpy is a hard dep, but be defensive on headless CI
+        return 0.0
+    if indata is None:
+        return 0.0
+    arr = np.frombuffer(indata, dtype=np.int16) if isinstance(indata, (bytes, bytearray)) \
+        else np.asarray(indata).reshape(-1)
+    if arr.size == 0:
+        return 0.0
+    # float64 to avoid int16 overflow when squaring.
+    rms = float(np.sqrt(np.mean(np.square(arr.astype(np.float64)))))
+    return max(0.0, min(1.0, rms / _INT16_FULL_SCALE))
 
 
 class AudioRecorder:
@@ -34,11 +59,15 @@ class AudioRecorder:
         channels: int = CHANNELS,
         chunk_size: int = CHUNK_SIZE,
         device_index: Optional[int] = None,
+        on_level: Optional[Callable[[float], None]] = None,
     ):
         self.sample_rate = sample_rate
         self.channels = channels
         self.chunk_size = chunk_size
         self.device_index = device_index
+        # Optional per-chunk RMS level callback (0.0-1.0) for live UI meters.
+        # Called from the audio thread; consumers must marshal to their UI loop.
+        self._on_level = on_level
 
         self._frames: List[bytes] = []
         self._is_recording = False
@@ -75,6 +104,13 @@ class AudioRecorder:
             logger.debug("sounddevice status: %s", status)
         with self._lock:
             self._frames.append(bytes(indata))
+        # Emit a live RMS level for UI meters (HUD ring). Never let a slow or
+        # raising consumer kill the audio thread.
+        if self._on_level is not None:
+            try:
+                self._on_level(chunk_rms_level(indata))
+            except Exception as e:  # noqa: BLE001
+                logger.debug("on_level callback raised: %s", e)
 
     def start(self) -> bool:
         if self._is_recording:

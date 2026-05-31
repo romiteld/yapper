@@ -41,3 +41,40 @@ def test_reduce_motion_disables_level_animation(qtbot):
     # With reduce_motion the level ring stays flat regardless of input.
     hud.update_level(0.9)
     assert hud._displayed_level == 0.0
+
+
+def test_level_animation_advances_displayed_level(qtbot):
+    # Without reduce_motion, feeding levels and ticking the animation timer
+    # must move the displayed (eased) level toward the target — the ring moves.
+    hud = RecordingHUD(reduce_motion=False)
+    qtbot.addWidget(hud)
+    hud.set_state("listening")
+    hud.update_level(1.0)
+    assert hud._displayed_level == 0.0  # not yet ticked
+    hud._tick()  # one animation frame
+    assert hud._displayed_level > 0.0
+
+
+# ---- MINOR-7: macOS shim deferred to showEvent -----------------------------
+
+def test_macos_shim_not_applied_in_constructor(qtbot):
+    # On construction the native handle may not exist; the shim must be deferred.
+    hud = RecordingHUD()
+    qtbot.addWidget(hud)
+    assert hud._macos_behavior_applied is False
+
+
+def test_macos_shim_applied_on_show(qtbot):
+    calls = []
+    hud = RecordingHUD()
+    qtbot.addWidget(hud)
+    # Spy on the shim to confirm showEvent invokes it exactly once.
+    hud._apply_macos_collection_behavior = lambda: calls.append(True)
+    hud.show()
+    qtbot.waitExposed(hud)
+    assert hud._macos_behavior_applied is True
+    assert calls == [True]
+    # A second show does not re-apply.
+    hud.hide()
+    hud.show()
+    assert calls == [True]

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -21,7 +21,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from core import TextTyper, TranscriptionHistory, TranscriptionRecord, get_logger
+from core import (
+    Settings,
+    TextTyper,
+    TranscriptionHistory,
+    TranscriptionRecord,
+    get_logger,
+)
 from . import theme
 
 logger = get_logger("history_window")
@@ -35,10 +41,39 @@ def filter_records(records: List[TranscriptionRecord], query: str) -> List[Trans
     return [r for r in records if q in r.text.lower()]
 
 
+def reprocess_text(text: str, settings: Settings) -> str:
+    """Re-run stored text through the Formatter with the CURRENT settings.
+
+    Reuses the no-slop pipeline (spoken-symbol expansion, vocabulary, mode
+    cleanup, translation) so a user can re-clean or re-translate a past
+    transcription without re-recording. Returns the original text unchanged if
+    formatting fails (e.g. no API key) — never raises to the UI.
+    """
+    try:
+        from core import APIClient
+        from core.formatting import Formatter
+        from core.vocabulary import Vocabulary
+        vocab = Vocabulary(load_starter=False)
+        vocab.from_list(settings.get("vocabulary", []))
+        client = APIClient(api_key=settings.get("api_key"))
+        formatter = Formatter(client, vocab)
+        return formatter.format(
+            text,
+            mode=settings.get("output_mode", "clean"),
+            expand_symbols=bool(settings.get("expand_spoken_symbols", True)),
+            translate_to=settings.get("translate_to") or None,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"reprocess failed: {exc}")
+        return text
+
+
 class HistoryWindow(QWidget):
-    def __init__(self, history: TranscriptionHistory, parent=None):
+    def __init__(self, history: TranscriptionHistory,
+                 settings: Optional[Settings] = None, parent=None):
         super().__init__(parent)
         self.history = history
+        self.settings = settings or Settings().load()
         self.setWindowTitle("Yapper — History")
         self.setStyleSheet(theme.qss())
         self.resize(640, 520)
@@ -55,6 +90,7 @@ class HistoryWindow(QWidget):
         for text, slot in (
             ("Copy", self._copy_selected),
             ("Re-insert", self._reinsert_selected),
+            ("Reprocess", self._reprocess_selected),
             ("Export", self._export),
             ("Clear", self._clear),
         ):
@@ -91,6 +127,15 @@ class HistoryWindow(QWidget):
         text = self._selected_text()
         if text:
             TextTyper().type_text(text, method="paste")
+
+    def _reprocess_selected(self) -> None:
+        """Re-run the selected text through the Formatter with current settings,
+        then insert the reprocessed result at the cursor."""
+        text = self._selected_text()
+        if not text:
+            return
+        result = reprocess_text(text, self.settings)
+        TextTyper().type_text(result, method="paste")
 
     def _export(self) -> None:
         path, _ = QFileDialog.getSaveFileName(

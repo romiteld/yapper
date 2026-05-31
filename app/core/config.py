@@ -157,11 +157,32 @@ class Settings:
         Returns:
             True if value was valid and set, False otherwise.
         """
+        # Reject None for keys whose schema does not permit None. Without this
+        # guard set(key, None) would bypass validation for non-nullable keys
+        # (e.g. api_key) because _validate_setting returns None for both
+        # "invalid" and "valid None".
+        if value is None and not self._allows_none(key):
+            logger.warning(f"Invalid value for '{key}': None not allowed")
+            return False
         validated = self._validate_setting(key, value)
         if validated is not None or value is None:
             self._data[key] = validated if validated is not None else value
             return True
         logger.warning(f"Invalid value for '{key}': {value}")
+        return False
+
+    @staticmethod
+    def _allows_none(key: str) -> bool:
+        """True if the schema for ``key`` permits a None value.
+
+        Unknown keys are permissive (accepted as-is, matching _validate_setting).
+        Known keys allow None only when ``type(None)`` is in the expected type.
+        """
+        if key not in SETTINGS_SCHEMA:
+            return True
+        expected_type, _, _ = SETTINGS_SCHEMA[key]
+        if isinstance(expected_type, tuple):
+            return type(None) in expected_type
         return False
 
     def validate(self) -> Tuple[bool, list]:

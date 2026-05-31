@@ -1,6 +1,17 @@
 """Phase 4 Task 8: HistoryWindow tests."""
-from core import TranscriptionHistory, TranscriptionRecord
-from ui.history_window import HistoryWindow, filter_records
+from unittest.mock import MagicMock
+
+import pytest
+
+from core import Settings, TranscriptionHistory, TranscriptionRecord
+from ui.history_window import HistoryWindow, filter_records, reprocess_text
+
+
+@pytest.fixture
+def settings(tmp_path):
+    s = Settings(settings_path=tmp_path / "settings.json")
+    s.load()
+    return s
 
 
 def _recs():
@@ -43,3 +54,56 @@ def test_history_window_search_filters_list(qtbot, tmp_path):
     win._search.setText("kubectl")
     win._apply_filter()
     assert win._list.count() == 1
+
+
+# ---- HIGH-4: Reprocess action ----------------------------------------------
+
+def test_reprocess_text_expands_spoken_symbols(settings):
+    # verbatim mode skips the LLM, so reprocessing is deterministic; with
+    # expand_spoken_symbols the spoken token is expanded.
+    settings.set("output_mode", "verbatim")
+    settings.set("expand_spoken_symbols", True)
+    settings.set("api_key", "")  # no LLM calls
+    out = reprocess_text("git commit dash dash amend", settings)
+    assert "--amend" in out
+
+
+def test_reprocess_text_never_raises_returns_original(settings):
+    # Force a failure path: a settings object whose get explodes.
+    broken = MagicMock()
+    broken.get.side_effect = RuntimeError("boom")
+    assert reprocess_text("hello", broken) == "hello"
+
+
+def test_history_window_reprocess_inserts_via_typer(qtbot, tmp_path, settings, monkeypatch):
+    settings.set("output_mode", "verbatim")
+    settings.set("expand_spoken_symbols", True)
+    settings.set("api_key", "")
+    hist = TranscriptionHistory(history_dir=tmp_path, enabled=True)
+    hist.add(TranscriptionRecord.create("dash dash help", 1.0))
+    win = HistoryWindow(hist, settings=settings)
+    qtbot.addWidget(win)
+    win._list.setCurrentRow(0)
+
+    typed = {}
+    import ui.history_window as hw
+
+    class FakeTyper:
+        def type_text(self, text, method="paste"):
+            typed["text"] = text
+            typed["method"] = method
+            return True
+
+    monkeypatch.setattr(hw, "TextTyper", FakeTyper)
+    win._reprocess_selected()
+    assert typed["method"] == "paste"
+    assert "--help" in typed["text"]
+
+
+def test_history_window_has_reprocess_button(qtbot, tmp_path, settings):
+    hist = TranscriptionHistory(history_dir=tmp_path, enabled=True)
+    win = HistoryWindow(hist, settings=settings)
+    qtbot.addWidget(win)
+    from PySide6.QtWidgets import QPushButton
+    labels = {b.text() for b in win.findChildren(QPushButton)}
+    assert {"Copy", "Re-insert", "Reprocess", "Export", "Clear"} <= labels

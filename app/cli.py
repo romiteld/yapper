@@ -13,20 +13,28 @@ from ui.controller import Controller
 logger = get_logger("cli")
 
 
-def _build_controller(settings: Settings) -> Controller:
-    return Controller(settings)
+def _build_controller(settings: Settings, on_error=None) -> Controller:
+    return Controller(settings, on_error=on_error)
 
 
 def run_once(settings: Settings, duration: float = 5.0) -> int:
-    """Record for `duration` seconds, transcribe, and type once. Returns exit code."""
+    """Record for `duration` seconds, transcribe, and type once.
+
+    Returns an exit code: 0 on success, 2 if no API key is configured, and 1 if
+    the pipeline reported an error (mic/transcription/insertion failure).
+    """
     if not settings.get("api_key"):
         logger.error("No API key set. Run `python -m app` to configure.")
         return 2
-    controller = _build_controller(settings)
+    errors: list[str] = []
+    controller = _build_controller(settings, on_error=errors.append)
     controller.start_recording()
     time.sleep(duration)
     controller.stop_recording()
     controller._await_processing(timeout=60.0)
+    if errors:
+        logger.error("Dictation failed: %s", errors[-1])
+        return 1
     return 0
 
 

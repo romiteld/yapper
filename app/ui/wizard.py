@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import platform
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal, Slot
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
@@ -37,6 +37,10 @@ def wizard_steps(is_mac: bool) -> list[str]:
 
 class SetupWizard(QWidget):
     finished_setup = Signal()
+    # Emitted (possibly from the Controller's worker thread) with the mic-test
+    # result text. Connected with a queued connection to a Qt-main-thread slot
+    # so QLabel is never mutated off the GUI thread.
+    _mic_result_ready = Signal(str)
 
     def __init__(self, settings: Settings, is_mac: bool | None = None, parent=None):
         super().__init__(parent)
@@ -45,6 +49,12 @@ class SetupWizard(QWidget):
             platform.system() == "Darwin" if is_mac is None else is_mac
         )
         self.current_index = 0
+        # Hold a reference so the mic-test Controller isn't GC'd mid-recording.
+        self._mic_controller = None
+        # Queued connection guarantees the slot runs on the GUI thread even when
+        # emitted from the Controller worker thread.
+        self._mic_result_ready.connect(
+            self._set_mic_result, Qt.ConnectionType.QueuedConnection)
 
         self.setWindowTitle("Welcome to Yapper")
         self.setStyleSheet(theme.qss())
@@ -171,17 +181,33 @@ class SetupWizard(QWidget):
         elif name == "Hotkey & Voice" and hasattr(self, "_hotkey_combo"):
             self.settings.set("hotkey", self._hotkey_combo.currentText())
 
+    @Slot(str)
+    def _set_mic_result(self, text: str) -> None:
+        """GUI-thread slot that updates the mic-test label."""
+        if hasattr(self, "_mic_result"):
+            self._mic_result.setText(text)
+
+    def _on_mic_result(self, text: str) -> None:
+        """Controller on_result callback — may run on the worker thread.
+
+        Routes the text to the GUI thread via a queued signal instead of
+        touching the QLabel directly (Qt widgets are not thread-safe).
+        """
+        self._mic_result_ready.emit(
+            f"Heard: {text[:48]}" if text else "No speech detected")
+
     def _run_mic_test(self) -> None:
         # Real, short capture + transcription so the user gets a success moment.
         try:
             from .controller import Controller
             self._mic_result.setText("Recording 2s… speak now")
-            # A lightweight one-shot using the same pipeline, fire-and-forget.
-            c = Controller(self.settings, on_result=lambda t: self._mic_result.setText(
-                f"Heard: {t[:48]}" if t else "No speech detected"))
-            c.start_recording()
-            from PySide6.QtCore import QTimer
-            QTimer.singleShot(2000, c.stop_recording)
+            # A lightweight one-shot using the same pipeline. Keep a reference
+            # on self so it isn't garbage-collected mid-recording, and route the
+            # worker-thread result through a queued signal (thread-safe).
+            self._mic_controller = Controller(
+                self.settings, on_result=self._on_mic_result)
+            self._mic_controller.start_recording()
+            QTimer.singleShot(2000, self._mic_controller.stop_recording)
         except Exception as exc:  # noqa: BLE001
             self._mic_result.setText(f"Mic test failed: {exc}")
 

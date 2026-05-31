@@ -54,7 +54,9 @@ class RecordingHUD(QWidget):
         self._anim.setInterval(33)  # ~30 fps
         self._anim.timeout.connect(self._tick)
 
-        self._apply_macos_collection_behavior()
+        # The macOS NSWindow shim needs a native window handle, which only
+        # exists after the widget is first shown — applied in showEvent.
+        self._macos_behavior_applied = False
 
     # -- public API ------------------------------------------------------
     def set_state(self, state: str) -> None:
@@ -91,6 +93,14 @@ class RecordingHUD(QWidget):
             y = geom.bottom() - self.HEIGHT - 60
             self.move(x, y)
         self.show()
+
+    def showEvent(self, event):  # noqa: N802 - Qt override
+        # Apply the macOS NSWindow collection behavior once the native handle
+        # exists (winId() is only valid after the first show).
+        super().showEvent(event)
+        if not self._macos_behavior_applied:
+            self._macos_behavior_applied = True
+            self._apply_macos_collection_behavior()
 
     def _apply_macos_collection_behavior(self) -> None:
         if platform.system() != "Darwin":

@@ -44,6 +44,7 @@ class Controller:
         on_level: Optional[Callable[[float], None]] = None,
         on_result: Optional[Callable[[str], None]] = None,
         on_error: Optional[Callable[[str], None]] = None,
+        history: Optional[TranscriptionHistory] = None,
     ):
         self.settings = settings
         self._on_state = on_state
@@ -56,7 +57,11 @@ class Controller:
         self._lock = threading.Lock()
 
         self.sounds = SoundPlayer(enabled=settings.get("audio_feedback", True))
-        self.history = TranscriptionHistory(enabled=settings.get("save_history", True))
+        # Share ONE history instance with the UI so records added during
+        # dictation are immediately visible to the HistoryWindow (Transcription
+        # History._ensure_loaded caches once, so two instances would diverge).
+        self.history = history or TranscriptionHistory(
+            enabled=settings.get("save_history", True))
 
     # -- state -----------------------------------------------------------
     def _set_state(self, state: ControllerState) -> None:
@@ -66,6 +71,20 @@ class Controller:
         logger.debug(f"state -> {state.value}")
         if self._on_state:
             self._on_state(state)
+
+    def _emit_level(self, level: float) -> None:
+        """Forward a live audio RMS level (0.0-1.0) to the UI meter.
+
+        Called from the audio thread; the UI callback (YapperApp) marshals it
+        onto the Qt main thread via a Signal. Only fires while listening so a
+        late callback after stop() doesn't animate the HUD.
+        """
+        if self._on_level is None or self.state != ControllerState.LISTENING:
+            return
+        try:
+            self._on_level(level)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(f"on_level callback raised: {exc}")
 
     def _emit_error(self, message: str) -> None:
         logger.error(message)
@@ -86,7 +105,8 @@ class Controller:
             self._emit_error("No API key set. Open Settings to add one.")
             return
         self._recorder = self._recorder_factory(
-            device_index=self.settings.get("audio_device_index")
+            device_index=self.settings.get("audio_device_index"),
+            on_level=self._emit_level,
         )
         self.sounds.start_recording()
         if self._recorder.start():
