@@ -24,13 +24,18 @@ class Notifier:
         self._tried = False
 
     def _get_backend(self):
-        """Lazily build a DesktopNotifier, or None if it can't be created."""
+        """Lazily build a DesktopNotifierSync, or None if it can't be created.
+
+        desktop-notifier v6 exposes the async ``DesktopNotifier`` plus a
+        blocking ``DesktopNotifierSync`` whose ``send(title=, message=)`` runs
+        the event loop for us — that's the one we want from a sync callsite.
+        """
         if self._tried:
             return self._backend
         self._tried = True
         try:
-            from desktop_notifier import DesktopNotifier
-            self._backend = DesktopNotifier(app_name=self.app_name)
+            from desktop_notifier import DesktopNotifierSync
+            self._backend = DesktopNotifierSync(app_name=self.app_name)
         except Exception as e:
             logger.info("Notifications unavailable (%s); using HUD only", e)
             self._backend = None
@@ -41,6 +46,6 @@ class Notifier:
         if backend is None:
             return
         try:
-            backend.send_sync(title=title, message=message)
+            backend.send(title=title, message=message)
         except Exception as e:
             logger.debug("Notification failed: %s", e)
