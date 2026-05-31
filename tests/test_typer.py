@@ -65,6 +65,28 @@ def test_paste_restores_clipboard_on_daemon_thread(monkeypatch):
     assert started.get("daemon") is True
 
 
+def test_paste_skips_restore_when_clipboard_empty():
+    """An empty original clipboard must NOT spawn a restore thread (else a
+    fresh user copy in the ~1.5s window could be clobbered with '')."""
+    fake_clip = MagicMock()
+    fake_clip.paste.return_value = ""   # nothing worth restoring
+    fake_kb = MagicMock()
+    fake_kb.Controller.return_value = MagicMock()
+    fake_kb.Key.ctrl = "CTRL"
+
+    t = TextTyper(delay_before_typing=0.0, clipboard_restore_delay=0.0)
+
+    with patch.object(t, "_load_pyperclip", return_value=fake_clip), \
+         patch.object(t, "_load_keyboard", return_value=fake_kb), \
+         patch.object(t, "_accessibility_ok", return_value=True), \
+         patch("core.typer.IS_MAC", False), \
+         patch("core.typer.threading.Thread") as thread_cls:
+        ok = t.type_text("x", method="paste")
+
+    assert ok is True
+    thread_cls.assert_not_called()   # no restore scheduled for empty clipboard
+
+
 def test_type_method_uses_controller_type():
     fake_kb = MagicMock()
     controller = MagicMock()

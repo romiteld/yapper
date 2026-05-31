@@ -97,14 +97,17 @@ class AudioRecorder:
                 device=self.device_index,
                 callback=self._callback,
             )
-            self._stream.start()
+            # Flip the flag BEFORE the stream goes live so frames arriving in
+            # the audio callback the instant start() returns aren't dropped by
+            # a still-False is_recording (start/stop race).
             self._is_recording = True
+            self._stream.start()
             logger.info("Recording started")
             return True
         except Exception as e:
             logger.error("Failed to start recording: %s", e)
-            self._close_stream()
             self._is_recording = False
+            self._close_stream()
             return False
 
     def stop(self) -> Optional[str]:

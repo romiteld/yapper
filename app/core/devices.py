@@ -114,6 +114,7 @@ def test_device(device_index: int, duration: float = 0.5) -> bool:
     sd = _load_sounddevice()
     if sd is None:
         return False
+    stream = None
     try:
         stream = sd.InputStream(
             samplerate=16000,
@@ -123,10 +124,15 @@ def test_device(device_index: int, duration: float = 0.5) -> bool:
         )
         stream.start()
         time.sleep(duration)
-        stream.stop()
-        stream.close()
         logger.debug("Device %d test passed", device_index)
         return True
     except Exception as e:
         logger.warning("Device %d test failed: %s", device_index, e)
         return False
+    finally:
+        if stream is not None:
+            try:
+                stream.stop()
+                stream.close()
+            except Exception as e:
+                logger.debug("Error closing test stream: %s", e)

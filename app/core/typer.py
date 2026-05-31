@@ -129,7 +129,10 @@ class TextTyper:
         return True
 
     def _schedule_clipboard_restore(self, pyperclip, original) -> None:
-        if original is None:
+        # Skip restore when the clipboard was empty/None: there's nothing worth
+        # preserving, and re-copying "" ~1.5s later could clobber a fresh copy
+        # the user made during the window.
+        if not original:
             return
 
         def _restore():
