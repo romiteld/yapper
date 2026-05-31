@@ -92,3 +92,33 @@ def test_local_engine_missing_extra_raises(monkeypatch):
     monkeypatch.setattr(eng, "_load_backend", _boom)
     with pytest.raises(LocalEngineUnavailable):
         eng.transcribe("/tmp/x.wav")
+
+
+from core.engines import get_engine
+
+
+def test_get_engine_cloud_default(settings_factory):
+    s = settings_factory(api_key="sk-x", engine="cloud")
+    eng = get_engine(s)
+    assert isinstance(eng, CloudEngine)
+    assert eng._model == "gpt-4o-mini-transcribe"
+
+
+def test_get_engine_cloud_honors_model(settings_factory):
+    s = settings_factory(api_key="sk-x", engine="cloud", cloud_stt_model="whisper-1")
+    eng = get_engine(s)
+    assert isinstance(eng, CloudEngine)
+    assert eng._model == "whisper-1"
+
+
+def test_get_engine_local(settings_factory):
+    s = settings_factory(engine="local", local_stt_model="small")
+    eng = get_engine(s)
+    assert isinstance(eng, LocalEngine)
+    assert eng._model == "small"
+
+
+def test_get_engine_exported_from_core():
+    import core
+    assert hasattr(core, "get_engine")
+    assert hasattr(core, "TranscriptionEngine")

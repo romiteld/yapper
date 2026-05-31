@@ -45,6 +45,15 @@ from .api import APIClient, APIError, APIConnectionError, APIRateLimitError
 # Transcription
 from .transcriber import Transcriber
 
+# Engines
+from .engines import (
+    TranscriptionEngine,
+    CloudEngine,
+    LocalEngine,
+    LocalEngineUnavailable,
+    get_engine,
+)
+
 # Text Typing
 from .typer import TextTyper
 
@@ -122,6 +131,12 @@ __all__ = [
     "APIRateLimitError",
     # Transcription
     "Transcriber",
+    # Engines
+    "TranscriptionEngine",
+    "CloudEngine",
+    "LocalEngine",
+    "LocalEngineUnavailable",
+    "get_engine",
     # Text Typing
     "TextTyper",
     # Platform
