@@ -3,7 +3,7 @@ Yapper Configuration Management
 ===============================
 Unified settings loading, saving, and validation.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import json

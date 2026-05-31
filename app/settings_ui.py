@@ -5,7 +5,7 @@ Yapper Settings UI
 Modern graphical interface for configuring Yapper settings.
 Cross-platform: Windows, macOS, Linux
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import os

@@ -3,7 +3,7 @@ Yapper Core Constants
 =====================
 Single source of truth for version, languages, hotkeys, and default settings.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 from typing import Dict, List
@@ -13,7 +13,7 @@ from typing import Dict, List
 # =============================================================================
 
 VERSION = "4.0.0"
-COPYRIGHT = "Copyright (c) 2026 Cloudelipute"
+COPYRIGHT = "© 2026 Cloudelipute"
 
 # =============================================================================
 # LANGUAGES

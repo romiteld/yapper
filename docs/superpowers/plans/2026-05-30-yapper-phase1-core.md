@@ -152,7 +152,7 @@ Yapper Platform Helpers
 =======================
 OS detection, default hotkey per OS, and OS deep-link / folder helpers.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import platform as _platform
@@ -502,7 +502,7 @@ macOS only re-reads TCC at process launch, so a False here means the user must
 grant the permission and *relaunch* the app. pynput injection fails silently
 without Accessibility, so we never rely on exceptions — we probe up front.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 from dataclasses import dataclass
@@ -757,7 +757,7 @@ PTT key auto-repeat is guarded by an internal `_active` flag so a held key only
 fires on_start once. Ctrl/Alt *combos* are broken on macOS (pynput #297), so the
 default activation is a single F-key.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import threading
@@ -1058,7 +1058,7 @@ target has time to read it. Fallback method: pynput Controller().type().
 On macOS, injection silently no-ops without Accessibility, so we check
 permissions first and refuse rather than appear to succeed.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import threading
@@ -1342,7 +1342,7 @@ so no native build step and a real macOS wheel exists).
 Public API is unchanged: start() -> bool, stop() -> str|None,
 .is_recording, .frames (list[bytes]), .duration_seconds.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import tempfile
@@ -1599,7 +1599,7 @@ Yapper Audio Devices
 Microphone enumeration via sounddevice.query_devices(). The AudioDevice
 dataclass shape is unchanged so callers and settings keep working.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 from dataclasses import dataclass
@@ -1761,7 +1761,7 @@ Thin wrapper over desktop-notifier. Degrades to a no-op when notifications are
 unavailable (e.g. an unsigned macOS build with no Notification Center access);
 the recording HUD remains the primary feedback channel.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 from typing import Optional

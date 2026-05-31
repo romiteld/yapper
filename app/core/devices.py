@@ -3,7 +3,7 @@ Yapper Audio Devices
 ====================
 Cross-platform microphone enumeration and selection.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 from dataclasses import dataclass

@@ -4,7 +4,7 @@ Yapper Settings (Console Version)
 Simple console-based settings configuration.
 Cross-platform: Windows, macOS, Linux
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import os

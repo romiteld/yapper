@@ -3,7 +3,7 @@ Yapper Text Typer
 =================
 Cross-platform text typing at cursor position.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import platform

@@ -3,7 +3,7 @@ Yapper Core Package
 ===================
 Shared components for the Yapper speech-to-text application.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 # Version and metadata

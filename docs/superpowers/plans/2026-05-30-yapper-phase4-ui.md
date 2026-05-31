@@ -134,7 +134,7 @@ def test_state_colors_cover_all_states():
 ```python
 """Yapper PySide6 UI package.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 from .app import YapperApp, main  # noqa: F401
 
@@ -144,7 +144,7 @@ __all__ = ["YapperApp", "main"]
 ```python
 """Yapper PySide6 UI package.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 __all__ = ["YapperApp", "main"]
@@ -160,7 +160,7 @@ def __getattr__(name):  # PEP 562 lazy attribute access
 ```python
 """Yapper UI theme — dark QSS + Cloudelipute pink accent.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 ACCENT = "#ec2a8e"
@@ -295,7 +295,7 @@ def test_duplicate_state_not_re_emitted(settings):
 Wires hotkeys -> record -> engine -> format -> type -> history. UI layers
 (YapperApp, HUD) subscribe via plain callbacks so this stays headless-testable.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 from __future__ import annotations
@@ -763,7 +763,7 @@ def test_reduce_motion_disables_level_animation(qtbot):
 ```python
 """Recording HUD — frameless translucent always-on-top pill.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 from __future__ import annotations
@@ -964,7 +964,7 @@ def test_wizard_finish_emits_signal(qtbot, settings):
 ```python
 """First-run setup wizard — sidebar steps.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 from __future__ import annotations
@@ -1215,7 +1215,7 @@ def test_history_window_search_filters_list(qtbot, tmp_path):
 ```python
 """History window — searchable transcription history with row actions.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 from __future__ import annotations
@@ -1393,7 +1393,7 @@ def test_settings_window_save_persists(qtbot, settings):
 ```python
 """Settings window — sidebar nav bound to core.Settings.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 from __future__ import annotations
@@ -1609,7 +1609,7 @@ def test_start_listener_builds_hotkey_manager(mock_notifier, mock_hk, qtbot, set
 ```python
 """YapperApp — QApplication + QSystemTrayIcon + Controller, with a thread bridge.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 from __future__ import annotations
@@ -1880,7 +1880,7 @@ def test_run_once_requires_api_key(monkeypatch, tmp_path):
 ```python
 """Single-shot CLI dictation path (`python -m app --once`). No Qt loop.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 from __future__ import annotations
@@ -1927,7 +1927,7 @@ def cli_main(argv: list[str] | None = None) -> int:
 ```python
 """`python -m app` entry point.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import sys
@@ -2051,7 +2051,7 @@ def test_ui_package_exports_app_symbols():
 ```python
 """Yapper PySide6 UI package.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 from .app import YapperApp, main
 

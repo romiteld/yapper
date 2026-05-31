@@ -3,7 +3,7 @@ Yapper API Client
 =================
 OpenAI API client with retry logic and error handling.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import time

@@ -3,7 +3,7 @@ Yapper Logging Infrastructure
 =============================
 Centralized logging setup for file and console output.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import logging

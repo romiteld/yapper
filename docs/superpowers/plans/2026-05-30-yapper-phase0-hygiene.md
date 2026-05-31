@@ -45,8 +45,8 @@
 - `app/core/constants.py` — `VERSION = "4.0.0"`, `COPYRIGHT = "© 2026 Cloudelipute"`, header copyright line.
 - `VERSION` — `4.0.0`.
 - `.gitignore` — confirm `.claude/` and `python/` stay ignored; ensure `.venv/` ignored (it is); no functional change expected but verified.
-- All tracked source files containing the literal `Copyright (c) 2026 Cloudelipute` header/notice (see Task 5 list) → `© 2026 Cloudelipute`.
-- `LICENSE` — **left intact** (the formal MIT `Copyright (c) 2026 Cloudelipute` line is legally conventional; do NOT change). Called out explicitly in Task 5 so it is not "missed."
+- All tracked source files containing the literal `© 2026 Cloudelipute` header/notice (see Task 5 list) → `© 2026 Cloudelipute`.
+- `LICENSE` — **left intact** (the formal MIT `© 2026 Cloudelipute` line is legally conventional; do NOT change). Called out explicitly in Task 5 so it is not "missed."
 - `CLAUDE.md` — update version refs / removed-file references so docs stay truthful.
 
 ---
@@ -285,7 +285,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
   Expected output (the version line still reads 3.3.1 until Task 4 bumps it):
   ```
   Yapper 3.3.1
-  Copyright (c) 2026 Cloudelipute
+  © 2026 Cloudelipute
   The PySide6 app is wired up in Phase 4. Run the tests with: uv run pytest
   ```
 
@@ -494,7 +494,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ### Task 5: Normalize copyright to `© 2026 Cloudelipute`
 
-Normalize the `COPYRIGHT` constant and every source-header / brand-notice occurrence of the literal `Copyright (c) 2026 Cloudelipute` to `© 2026 Cloudelipute`. **The `LICENSE` file is the single intentional exception** — the formal MIT `Copyright (c) 2026 Cloudelipute` line is legally conventional and stays exactly as-is.
+Normalize the `COPYRIGHT` constant and every source-header / brand-notice occurrence of the literal `© 2026 Cloudelipute` to `© 2026 Cloudelipute`. **The `LICENSE` file is the single intentional exception** — the formal MIT `© 2026 Cloudelipute` line is legally conventional and stays exactly as-is.
 
 **Files (tracked, contain the literal — confirmed by grep):**
 - Modify: `app/core/constants.py` (the `COPYRIGHT = ...` constant + its header line — 2 occurrences), `app/core/__init__.py`, `app/core/api.py`, `app/core/audio.py`, `app/core/config.py`, `app/core/devices.py`, `app/core/history.py`, `app/core/logger.py`, `app/core/sounds.py`, `app/core/transcriber.py`, `app/core/typer.py`, `app/core/vad.py`, `app/yapper.py`, `app/yapper_tray.py`, `app/settings_ui.py`, `app/settings_console.py`, `README.md`.
@@ -506,13 +506,13 @@ Normalize the `COPYRIGHT` constant and every source-header / brand-notice occurr
 
 - [ ] **Snapshot the current occurrence count (excluding LICENSE).** Run:
   ```bash
-  cd /home/romiteld/Development/Desktop_Apps/yapper-portable && grep -rl "Copyright (c) 2026 Cloudelipute" . 2>/dev/null | grep -v '/python/' | grep -v '.venv/' | grep -v '^./LICENSE$'
+  cd /home/romiteld/Development/Desktop_Apps/yapper-portable && grep -rl "© 2026 Cloudelipute" . 2>/dev/null | grep -v '/python/' | grep -v '.venv/' | grep -v '^./LICENSE$'
   ```
   Expected: the file list above (17 files, all `.py` + `README.md`, NOT `LICENSE`).
 
 - [ ] **Change the `COPYRIGHT` constant** in `app/core/constants.py` line 16 from:
   ```python
-  COPYRIGHT = "Copyright (c) 2026 Cloudelipute"
+  COPYRIGHT = "© 2026 Cloudelipute"
   ```
   to:
   ```python
@@ -522,21 +522,21 @@ Normalize the `COPYRIGHT` constant and every source-header / brand-notice occurr
 - [ ] **Bulk-normalize every remaining source-header occurrence except LICENSE.** Run (uses `find` + `sed -i`; explicitly excludes `LICENSE`, `python/`, `.venv/`, `.git/`):
   ```bash
   cd /home/romiteld/Development/Desktop_Apps/yapper-portable && \
-  grep -rl "Copyright (c) 2026 Cloudelipute" . 2>/dev/null \
+  grep -rl "© 2026 Cloudelipute" . 2>/dev/null \
     | grep -v '/python/' | grep -v './.venv/' | grep -v './.git/' \
     | grep -v '^./LICENSE$' \
     | while IFS= read -r f; do
-        sed -i 's/Copyright (c) 2026 Cloudelipute/© 2026 Cloudelipute/g' "$f"
+        sed -i 's/© 2026 Cloudelipute/© 2026 Cloudelipute/g' "$f"
       done
   ```
 
 - [ ] **Verify: zero remaining literals outside LICENSE.** Run:
   ```bash
-  cd /home/romiteld/Development/Desktop_Apps/yapper-portable && grep -rn "Copyright (c) 2026 Cloudelipute" . 2>/dev/null | grep -v '/python/' | grep -v './.venv/'
+  cd /home/romiteld/Development/Desktop_Apps/yapper-portable && grep -rn "© 2026 Cloudelipute" . 2>/dev/null | grep -v '/python/' | grep -v './.venv/'
   ```
   Expected output: exactly one line —
   ```
-  ./LICENSE:3:Copyright (c) 2026 Cloudelipute
+  ./LICENSE:3:© 2026 Cloudelipute
   ```
 
 - [ ] **Verify: the new `©` form is present and the constant is correct.** Run:
@@ -891,7 +891,7 @@ Full rewrite of `README.md`: banner, feature grid, three GitHub-native Mermaid d
 
 - [ ] **Verify the README has exactly three Mermaid blocks and no stray old copyright literal.** Run:
   ```bash
-  cd /home/romiteld/Development/Desktop_Apps/yapper-portable && echo "mermaid blocks:" && grep -c '```mermaid' README.md && echo "old literal (expect 0):" && grep -c "Copyright (c) 2026 Cloudelipute" README.md && echo "new form present:" && grep -c "© 2026 Cloudelipute" README.md
+  cd /home/romiteld/Development/Desktop_Apps/yapper-portable && echo "mermaid blocks:" && grep -c '```mermaid' README.md && echo "old literal (expect 0):" && grep -c "© 2026 Cloudelipute" README.md && echo "new form present:" && grep -c "© 2026 Cloudelipute" README.md
   ```
   Expected:
   ```
@@ -1027,7 +1027,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - [ ] `setup`/`setup.bat`/`run.sh`/`run.command`/`run.bat` all delegate to `uv run python -m app`; POSIX ones are `+x`.
 - [ ] `app/__init__.py` + `app/__main__.py` make `python -m app` print `Yapper 4.0.0` + `© 2026 Cloudelipute`.
 - [ ] `VERSION` file and `constants.VERSION` both read `4.0.0`; `constants.COPYRIGHT == "© 2026 Cloudelipute"`.
-- [ ] Zero occurrences of the literal `Copyright (c) 2026 Cloudelipute` remain **except** the formal MIT line in `LICENSE`.
+- [ ] Zero occurrences of the literal `© 2026 Cloudelipute` remain **except** the formal MIT line in `LICENSE`.
 - [ ] `README.md` renders three Mermaid diagrams on GitHub and contains install/permissions/model-cost/BYOK sections.
 - [ ] `tests/conftest.py` + `tests/test_smoke.py` give `4 passed` under `uv run pytest`.
 - [ ] `.claude/`, `python/`, `.venv/` confirmed gitignored; `uv.lock` committed.

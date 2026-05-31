@@ -721,7 +721,7 @@
   ```python
   """Yapper transcription engines.
 
-  Copyright (c) 2026 Cloudelipute
+  © 2026 Cloudelipute
   """
 
   from .base import TranscriptionEngine
@@ -736,7 +736,7 @@
   ===============================
   Defines the contract every STT backend (cloud, local) must satisfy.
 
-  Copyright (c) 2026 Cloudelipute
+  © 2026 Cloudelipute
   """
 
   from abc import ABC, abstractmethod
@@ -836,7 +836,7 @@
   ====================================
   Wraps APIClient; default model gpt-4o-mini-transcribe.
 
-  Copyright (c) 2026 Cloudelipute
+  © 2026 Cloudelipute
   """
 
   from typing import Optional
@@ -953,7 +953,7 @@
   Lazy-imports mlx_whisper (macOS Apple Silicon) or faster_whisper (Windows).
   Requires the optional install extra:  uv sync --extra local
 
-  Copyright (c) 2026 Cloudelipute
+  © 2026 Cloudelipute
   """
 
   import sys
@@ -1106,7 +1106,7 @@
   ```python
   """Yapper transcription engines.
 
-  Copyright (c) 2026 Cloudelipute
+  © 2026 Cloudelipute
   """
 
   from ..logger import get_logger
@@ -1286,7 +1286,7 @@
   The real formatting subsystem lands in Phase 3 (core/formatting.Formatter).
   Until then, a passthrough formatter is used by default.
 
-  Copyright (c) 2026 Cloudelipute
+  © 2026 Cloudelipute
   """
 
   import os

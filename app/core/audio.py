@@ -3,7 +3,7 @@ Yapper Audio Recording
 ======================
 Cross-platform audio recording using PyAudio.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import tempfile

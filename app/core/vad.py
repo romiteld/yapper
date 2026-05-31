@@ -3,7 +3,7 @@ Yapper Voice Activity Detection
 ===============================
 Energy-based voice activity detection to reduce unnecessary API calls.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import math

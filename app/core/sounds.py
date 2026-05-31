@@ -3,7 +3,7 @@ Yapper Audio Feedback
 =====================
 Cross-platform audio feedback sounds.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import platform

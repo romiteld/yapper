@@ -55,7 +55,7 @@ printf '' > /home/romiteld/Development/Desktop_Apps/yapper-portable/tests/qa/__i
 ```python
 """QA gate: no secrets or API keys may be committed.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 import re
 import subprocess
@@ -147,7 +147,7 @@ Enforce spec §1: the only identifier allowed is the brand `Cloudelipute` (norma
 ```python
 """QA gate: no personal info beyond the Cloudelipute brand; .claude/ not tracked.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 import re
 import subprocess
@@ -264,7 +264,7 @@ Lock the version/copyright so the release artifacts and the in-app About screen 
 ```python
 """QA gate: version and copyright metadata are consistent for release.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 import sys
 import tomllib
@@ -309,7 +309,7 @@ cd /home/romiteld/Development/Desktop_Apps/yapper-portable && uv run pytest -q t
 
   Edit `VERSION = "3.3.1"` → `VERSION = "4.0.0"`.
 
-  Edit `COPYRIGHT = "Copyright (c) 2026 Cloudelipute"` → `COPYRIGHT = "© 2026 Cloudelipute"`.
+  Edit `COPYRIGHT = "© 2026 Cloudelipute"` → `COPYRIGHT = "© 2026 Cloudelipute"`.
 
 - [ ] Fix the root `VERSION` file.
 
@@ -433,7 +433,7 @@ This is the heart of Phase 6. Use the superpowers `dispatching-parallel-agents` 
 ````markdown
 # Yapper v4 — Multi-Agent QA Review Runbook
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 
 ## Goal
 Adversarially find every real defect across four dimensions, refute false
@@ -619,7 +619,7 @@ Real-hardware verification per spec §11 (macOS permission UX is the top risk). 
 ````markdown
 # Yapper v4 — macOS (Apple Silicon) Manual Smoke Checklist
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 
 Run on a clean M-series Mac (Sequoia/Tahoe). Tick each box; record OS version,
 chip, and Yapper build (clone vs `.app`).
@@ -700,7 +700,7 @@ Windows is first-class; verify the no-permission-prompt path and the same end-to
 ````markdown
 # Yapper v4 — Windows Manual Smoke Checklist
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 
 Run on Windows 10/11. Record OS build and Yapper build (clone vs `.zip`).
 
@@ -760,7 +760,7 @@ Produce the unsigned artifacts. Spec §7: arm64 `.app` (Info.plist with `NSMicro
 ```python
 # -*- mode: python ; coding: utf-8 -*-
 # Yapper v4 unsigned-bundle PyInstaller spec.
-# Copyright (c) 2026 Cloudelipute
+# © 2026 Cloudelipute
 # Build (mac):  uv run pyinstaller Yapper.spec --noconfirm
 # Build (win):  uv run pyinstaller Yapper.spec --noconfirm
 
@@ -827,7 +827,7 @@ if sys.platform == "darwin":
 ```bash
 #!/usr/bin/env bash
 # Yapper v4 unsigned release builder.
-# Copyright (c) 2026 Cloudelipute
+# © 2026 Cloudelipute
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -909,7 +909,7 @@ Document the release checklist, draft the GitHub release notes, and tag v4.0.0. 
 ````markdown
 # Yapper v4.0.0 — Release Checklist
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 
 ## Pre-flight (must all pass)
 - [ ] `git status --porcelain` empty (clean tree).

@@ -348,7 +348,7 @@ Yapper AI Edit / Command Mode
 =============================
 Transform the user's current selection per a spoken/typed instruction.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import time
@@ -587,7 +587,7 @@ Best-effort current-foreground-app identifier for app-specific Modes.
 Returns a process name (Windows, e.g. "Code.exe") or bundle id (macOS, e.g.
 "com.microsoft.VSCode"); None on unsupported platforms or any failure.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import platform
@@ -714,7 +714,7 @@ Yapper App-Specific Modes (Power Mode)
 Map the foreground app to a profile that bundles output_mode + translate +
 vocabulary + hotkey, applied automatically while that app is in front.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 from dataclasses import dataclass, asdict, field
@@ -931,7 +931,7 @@ emits partial + final transcripts. Opt-in only (settings.realtime_enabled).
 
 Requires the optional [realtime] extra: `websockets`.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import json
@@ -1405,7 +1405,7 @@ Yapper Command Palette
 A small frameless input that captures a typed (or dictated) edit instruction and
 runs it through CommandMode against the user's current selection.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 from ..core.logger import get_logger

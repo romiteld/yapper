@@ -191,7 +191,7 @@ Ordered, conservative regex rules. Multi-word/structural cues first, then single
   Spoken-symbol expansion and output-mode cleanup that preserves technical
   text verbatim (CLI flags, file paths, code identifiers) and never paraphrases.
 
-  Copyright (c) 2026 Cloudelipute
+  © 2026 Cloudelipute
   """
 
   import re
@@ -362,7 +362,7 @@ Ordered, conservative regex rules. Multi-word/structural cues first, then single
     - "said":  an optional phonetic alias the model tends to mis-hear
                (e.g. "cube cuttle"). None means correct toward "typed" only.
 
-  Copyright (c) 2026 Cloudelipute
+  © 2026 Cloudelipute
   """
 
   from typing import Dict, List, Optional

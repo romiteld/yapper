@@ -185,7 +185,7 @@ yapper/
 
 ## License
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 
 ---
 

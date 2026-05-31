@@ -3,7 +3,7 @@ Yapper Transcriber
 ==================
 Speech-to-text transcription with optional translation and grammar correction.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import os

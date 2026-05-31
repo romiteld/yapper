@@ -3,7 +3,7 @@ Yapper Transcription History
 ============================
 Logging and retrieval of transcription records.
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import json

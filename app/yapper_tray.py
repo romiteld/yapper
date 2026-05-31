@@ -8,7 +8,7 @@ HOW TO USE:
   2. Speak your message
   3. Press F8 again to stop and transcribe
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import os

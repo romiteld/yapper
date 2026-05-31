@@ -12,7 +12,7 @@ Features:
     - Voice activity detection to reduce API costs
     - Easy configuration via settings.json
 
-Copyright (c) 2026 Cloudelipute
+© 2026 Cloudelipute
 """
 
 import os
