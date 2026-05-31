@@ -2,9 +2,9 @@
 
 # 🎙️ Yapper
 
-**Push-to-talk speech-to-text for engineers — clone-first, bring-your-own-key.**
+**Push-to-talk dictation that types what you actually said — for prompting AI agents, writing docs, or just messaging.**
 
-Record your voice, transcribe it, clean it up *without AI slop*, and paste it at your cursor.
+Keeps your words (and your jargon) intact — *no AI slop*. Record your voice, transcribe it, fix only the mechanics, and paste it at your cursor.
 Cross-platform: **macOS (Apple Silicon)** and **Windows**, one codebase.
 
 `© 2026 Cloudelipute` · MIT License · v4.0.0
@@ -18,7 +18,8 @@ Cross-platform: **macOS (Apple Silicon)** and **Windows**, one codebase.
 | | |
 |---|---|
 | 🎯 **Push-to-talk** | Hold a key to dictate. Toggle and wake-word modes too. |
-| 🧠 **No "AI slop"** | Technical mode preserves identifiers, CLI flags, file paths & code **verbatim** — never paraphrased. |
+| 🧠 **No "AI slop"** | Types your *actual* words — wording, tone, slang **and** jargon/code kept **verbatim**, never paraphrased. Say "*um so like i'll be there in ten*" and it stays your sentence; say "*cube cuttle apply dash f deployment dot yaml*" and you get `kubectl apply -f deployment.yaml`. |
+| 🎚️ **Output modes** | **Clean** (default — faithful: fix only caps/punctuation + fillers, keep your words) · **Polished** (opt-in tidy rewrite) · **Verbatim** (raw, no AI). |
 | 🔤 **Spoken symbols** | "dash dash help" → `--help`, "dot py" → `.py`, "open paren" → `(`. |
 | 📚 **Vocabulary** | Teach it your terms: "cube cuttle" → `kubectl`, "next J S" → `Next.js`. CSV import. |
 | ☁️ **Cloud or 🖥️ on-device** | Default cloud `gpt-4o-mini-transcribe`; optional local `mlx-whisper`/`faster-whisper`. |
@@ -64,7 +65,7 @@ flowchart TD
     vad -->|"silent"| idle
     vad -->|"speech"| bias["vocabulary → Whisper prompt bias"]
     bias --> stt["Engine.transcribe()<br/>cloud gpt-4o-mini-transcribe<br/>or local mlx / faster-whisper"]
-    stt --> fmt["Formatting:<br/>strip wake words → expand spoken symbols →<br/>canonical vocab correction → mode cleanup<br/>(technical / natural / verbatim) →<br/>optional translate (gpt-5-nano)"]
+    stt --> fmt["Formatting:<br/>strip wake words → expand spoken symbols →<br/>canonical vocab correction → mode cleanup<br/>(clean / polished / verbatim) →<br/>optional translate (gpt-5-nano)"]
     fmt --> paste["Typer: clipboard-paste at cursor (⌘/Ctrl+V)"]
     paste --> done["HUD: done ✓ · sound cue · history.add() · notify"]
     done --> idle
@@ -161,7 +162,9 @@ Windows and Linux require no special TCC grants (Windows hotkeys may need an ele
 |---|---|---|---|
 | Cloud STT | `gpt-4o-mini-transcribe` (~$0.003/min) | `whisper-1` | mini is ~50% cheaper & more accurate; whisper-1 kept for long-tail langs / timestamps |
 | On-device STT | `mlx-whisper` (mac) / `faster-whisper` (win) | size selectable (`base`…) | runs offline; install via `--extra local` |
-| Text cleanup / translate | `gpt-5-nano` (`reasoning_effort='minimal'`) | `gpt-5.4-nano` | `gpt-4.1-nano` is **deprecated** (shuts down 2026-10-23) |
+| Text cleanup / translate | `gpt-5-nano` (`reasoning_effort='minimal'`) | `gpt-5.4-nano` | drives **Clean**/**Polished** modes + translation; `gpt-4.1-nano` is **deprecated** (shuts down 2026-10-23) |
+
+**Output modes** (`output_mode` setting): **Clean** (default) faithfully fixes only caps/punctuation and fillers while keeping your exact words, tone, and any code/jargon verbatim. **Polished** is an opt-in heavier rewrite into tidy prose. **Verbatim** makes no AI call at all (the deterministic spoken-symbol + vocabulary stages still run, so it works with no API key).
 
 A few minutes of dictation per day on the cloud default costs cents. On-device is free after download.
 

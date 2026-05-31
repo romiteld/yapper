@@ -14,13 +14,13 @@ Yapper is a speech‑to‑text utility that records the user's voice, transcribe
 This project does two things at once:
 
 1. **Make it run first‑class on macOS Apple Silicon (M3/M4/M5)** while keeping Windows first‑class — one cross‑platform codebase.
-2. **Reimagine the UI/UX** to 2026 standards (guided onboarding, a floating recording HUD, push‑to‑talk, modern settings, native notifications) **and** add the features that make it genuinely useful to software engineers.
+2. **Reimagine the UI/UX** to 2026 standards (guided onboarding, a floating recording HUD, push‑to‑talk, modern settings, native notifications) **and** add the features that make it genuinely useful as a **general‑purpose** dictation tool — prompting AI agents, writing docs, and everyday/social messaging alike (not engineer‑only branding).
 
 It will be **open‑sourced on GitHub, clone‑first**: the primary install path is `git clone` + a one‑command setup; prebuilt **unsigned** `.app`/`.dmg` (macOS) and `.zip` (Windows) are attached to Releases as a convenience.
 
 ### Non‑negotiable product requirements (from the user)
 
-- **No "AI slop."** Output must faithfully preserve technical terms, code identifiers, CLI flags, file paths, and product/library names — the kind of text an engineer dictates when prompting an AI agent or writing docs. The cleanup step must **never paraphrase** technical phrasing.
+- **No "AI slop."** Yapper is a **general‑purpose** dictation tool — for prompting AI agents, writing docs, *and* everyday/social messaging (not engineer‑only). Output must type what the user **actually said**: their wording, tone, and slang **and** any technical terms, code identifiers, CLI flags, file paths, and product/library names — all faithfully preserved. The cleanup step fixes only mechanics (caps/punctuation, filler removal) and must **never paraphrase**, for casual text just as much as technical.
 - **No personal information** in code, comments, or README. (Scan confirmed: the only identifier present is the brand `Cloudelipute`, which **stays** — normalized to `© 2026 Cloudelipute`. No real name/email exists in tracked files.)
 - **`.claude/` must not ship** — already untracked and in `.gitignore` (verified).
 - **Upgraded README** with diagrams.
@@ -134,7 +134,7 @@ The old `app/yapper_tray.py`, `app/yapper.py`, `app/settings_ui.py`, `app/settin
                        Formatting subsystem (§5):
                          clean wake words → spoken‑symbol expand →
                          canonical vocab correction → mode cleanup
-                         (Technical = no paraphrase / Natural / Verbatim) →
+                         (Clean = default, no paraphrase / Polished / Verbatim) →
                          optional translate (gpt‑5‑nano)
                                             │ final text
                                             ▼
@@ -153,12 +153,12 @@ Latency is masked by an instant clipboard paste of the whole result and a visibl
 This is the product differentiator and a P0. Pipeline, in order, after raw transcription:
 
 1. **Wake‑word stripping** (existing) — only when wake‑word activation is used.
-2. **Spoken‑symbol expansion** (toggle, default on in Technical mode): `"dash dash help"` → `--help`, `"dot py"` → `.py`, `"backtick"` → `` ` ``, `"open paren"` → `(`, `"new line"` → `\n`, etc. Implemented as ordered regex rules; conservative (only fire on clear cues) to avoid corrupting prose.
+2. **Spoken‑symbol expansion** (toggle, default on): `"dash dash help"` → `--help`, `"dot py"` → `.py`, `"backtick"` → `` ` ``, `"open paren"` → `(`, `"new line"` → `\n`, etc. Implemented as ordered regex rules; conservative (only fire on clear cues) to avoid corrupting prose.
 3. **Canonical vocabulary correction** — fuzzy‑match mis‑hears to user terms: `"cube cuttle"`→`kubectl`, `"next J S"`→`Next.js`, `"post gres"`→`PostgreSQL`. Built from `core/vocabulary.py` (user terms + a small built‑in dev dictionary). Uses word/phrase‑level fuzzy replacement (rapidfuzz) with a high threshold.
-4. **Mode cleanup** (LLM, `gpt-5-nano`, `reasoning_effort='minimal'`):
-   - **Technical** (default): system prompt explicitly instructs *"fix only capitalization/obvious punctuation; **preserve all identifiers, camelCase/snake_case, CLI flags, file paths, code, and technical phrasing verbatim; never paraphrase, never 'improve' wording, never translate code tokens.'"* Vocabulary terms passed in the prompt as protected tokens.
-   - **Natural**: grammar‑polished prose, remove fillers, fix punctuation (the old grammar‑fix behavior).
-   - **Verbatim**: no LLM step at all (steps 2–3 optional).
+4. **Mode cleanup** (LLM, `gpt-5-nano`, `reasoning_effort='minimal'`). Yapper is **general‑purpose** (agent prompts, docs, *and* everyday/social messaging) — not engineer‑only; the default keeps the user's own wording for casual text just as much as technical text:
+   - **Clean** (default): system prompt instructs *"fix only capitalization/obvious punctuation and remove filler words; do not rephrase, reword, summarize, translate, or change the user's wording, tone, slang, or voice; preserve all technical terms, code, identifiers, CamelCase, CLI flags, and file paths verbatim."* Vocabulary terms passed in the prompt as protected tokens. (Was `technical` — renamed; legacy value migrates.)
+   - **Polished**: opt‑in heavier rewrite into grammar‑polished prose, remove fillers, fix punctuation (the old grammar‑fix behavior). (Was `natural` — renamed; legacy value migrates.)
+   - **Verbatim**: no LLM step at all (steps 2–3 still run when enabled).
 5. **Translation** (optional, replaces mode cleanup when a target language is set) — `gpt-5-nano`, instructed to leave code/identifiers untranslated.
 
 **Whisper biasing (before transcription):** the vocabulary builds the `prompt=` argument passed to `client.audio.transcriptions.create(...)` so the model is primed for the user's terms — counters Whisper's known weakness on proper nouns.
@@ -178,7 +178,7 @@ New keys (with defaults), validated in `SETTINGS_SCHEMA`:
 | `cloud_stt_model` | `"gpt-4o-mini-transcribe"` | or `whisper-1` |
 | `local_stt_model` | `"base"` | mlx/whisper.cpp/faster‑whisper size |
 | `text_model` | `"gpt-5-nano"` | post‑processing/translation |
-| `output_mode` | `"technical"` | `technical` \| `natural` \| `verbatim` |
+| `output_mode` | `"clean"` | `clean` \| `polished` \| `verbatim` (legacy `technical`→`clean`, `natural`→`polished` migrate) |
 | `expand_spoken_symbols` | `true` | |
 | `vocabulary` | `[]` | list of terms / `{said,typed}` |
 | `insertion_method` | `"paste"` | `paste` \| `type` |
