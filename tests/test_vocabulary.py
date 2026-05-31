@@ -65,6 +65,32 @@ def test_from_list_normalizes_bare_strings():
     assert {"said": None, "typed": "nginx"} in v.terms
 
 
+def test_add_from_list_keeps_starter_pack():
+    # add_from_list appends WITHOUT clearing existing terms.
+    v = Vocabulary()  # starter pack loaded
+    before = {t["typed"] for t in v.terms}
+    assert "kubectl" in before
+    v.add_from_list([{"typed": "FastAPI"}, "Pydantic"])
+    after = {t["typed"] for t in v.terms}
+    assert "kubectl" in after          # starter pack preserved
+    assert "FastAPI" in after          # user term added
+    assert "Pydantic" in after
+
+
+def test_add_from_list_empty_is_noop():
+    v = Vocabulary()
+    before = list(v.terms)
+    v.add_from_list([])
+    v.add_from_list(None)
+    assert v.terms == before
+
+
+def test_from_list_still_clears():
+    v = Vocabulary()  # starter pack
+    v.from_list([{"typed": "Solo"}])
+    assert [t["typed"] for t in v.terms] == ["Solo"]
+
+
 # ---------------------------------------------------------------------------
 # Task 4: Whisper prompt bias
 # ---------------------------------------------------------------------------
@@ -132,6 +158,71 @@ def test_correct_golden_kubectl_phrase():
     v.add("kubectl", said="cube cuttle")
     raw = "cube cuttle apply deployment"
     assert v.correct(raw) == "kubectl apply deployment"
+
+
+# ---------------------------------------------------------------------------
+# Correction architecture: said=None terms NEVER rewrite the user's words.
+# ---------------------------------------------------------------------------
+
+def test_said_none_term_does_not_self_correct():
+    # A term with no explicit alias contributes to prompt bias ONLY.
+    v = Vocabulary(load_starter=False)
+    v.add("Docker")  # said=None
+    assert v.correct("just docker it") == "just docker it"
+    assert v.correct("i use Docker daily") == "i use Docker daily"
+
+
+def test_npm_pnpm_do_not_collide():
+    # The old (typed,typed) self-match flipped "npm" -> "pnpm" at ratio 85.71.
+    v = Vocabulary(load_starter=False)
+    v.add("pnpm")  # said=None
+    v.add("npm")   # said=None
+    assert v.correct("i use pnpm instead of npm") == "i use pnpm instead of npm"
+
+
+def test_starter_pack_said_none_terms_never_correct():
+    v = Vocabulary()  # full starter pack
+    for s in ["just docker it", "redis is fast", "lets use postgres",
+              "i love nextjs"]:
+        assert v.correct(s) == s
+
+
+def test_list_alias_all_variants_correct():
+    v = Vocabulary(load_starter=False)
+    v.add("kubectl", said=["cube cuttle", "cube cuddle", "kube control"])
+    assert v.correct("run cube cuttle now") == "run kubectl now"
+    assert v.correct("run cube cuddle now") == "run kubectl now"
+    assert v.correct("run kube control now") == "run kubectl now"
+
+
+def test_list_alias_stored_as_comma_joined_string():
+    v = Vocabulary(load_starter=False)
+    v.add("kubectl", said=["cube cuttle", "cube cuddle"])
+    term = next(t for t in v.terms if t["typed"] == "kubectl")
+    assert term["said"] == "cube cuttle, cube cuddle"
+
+
+def test_non_distinctive_alias_is_ignored():
+    # An alias that is a single short word (< 2 words and < 6 chars) is too
+    # risky to apply and must be skipped by the distinctiveness backstop.
+    v = Vocabulary(load_starter=False)
+    v.add("React", said="reac")  # 1 word, 4 chars -> ignored
+    assert v.correct("i reac to this") == "i reac to this"
+
+
+def test_distinctive_alias_by_length_applies():
+    # >= 6 chars single word is distinctive enough.
+    v = Vocabulary(load_starter=False)
+    v.add("Kubernetes", said="koobernetees")
+    assert v.correct("deploy to koobernetees") == "deploy to Kubernetes"
+
+
+def test_whisper_prompt_includes_said_none_terms():
+    # All typed terms (including said=None) prime the Whisper prompt.
+    v = Vocabulary()
+    prompt = v.whisper_prompt()
+    for term in ["kubectl", "Docker", "Redis", "PostgreSQL", "pnpm"]:
+        assert term in prompt
 
 
 # ---------------------------------------------------------------------------

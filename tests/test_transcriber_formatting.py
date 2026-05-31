@@ -143,3 +143,25 @@ def test_default_construction_no_api_key_still_formats(tmp_path):
     assert isinstance(t._formatter, Formatter)
     out = t.transcribe(str(wav), delete_audio=False)
     assert out == "kubectl apply -f deployment.yaml"
+
+
+def test_transcriber_passes_text_model_to_formatter(tmp_path):
+    """The configured text_model flows Transcriber -> Formatter -> chat()."""
+    wav = tmp_path / "a.wav"
+    wav.write_bytes(b"RIFFfake")
+    vocab = Vocabulary(load_starter=False)
+    eng = _make_engine("hello world")
+
+    with patch("app.core.transcriber.APIClient") as MockAPI:
+        text_api = MockAPI.return_value
+        text_api.chat.side_effect = lambda messages, **kw: messages[1]["content"]
+        t = Transcriber(
+            engine=eng,
+            api_key="sk-test",
+            vocabulary=vocab,
+            output_mode="clean",
+            text_model="gpt-5.4-nano",
+            clean_wake_words=False,
+        )
+        t.transcribe(str(wav), delete_audio=False)
+        assert text_api.chat.call_args.kwargs.get("model") == "gpt-5.4-nano"

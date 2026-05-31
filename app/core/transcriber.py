@@ -59,6 +59,7 @@ class Transcriber:
         clean_wake_words: bool = True,
         vocabulary: Optional[object] = None,
         text_api_client: Optional[object] = None,
+        text_model: str = "gpt-5-nano",
         # Legacy compat (Phase 1/old callers); folded into output_mode.
         fix_grammar: bool = True,
     ):
@@ -87,7 +88,9 @@ class Transcriber:
             text_client = text_api_client
             if text_client is None and api_key:
                 text_client = APIClient(api_key=api_key)
-            self._formatter = Formatter(text_client, self._vocabulary)
+            self._formatter = Formatter(
+                text_client, self._vocabulary, text_model=text_model
+            )
 
     def transcribe(
         self,

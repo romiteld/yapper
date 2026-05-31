@@ -116,11 +116,7 @@ class Yapper:
         from core import Vocabulary
         # Start with the built-in starter pack, then layer the user's terms.
         vocab = Vocabulary()
-        for entry in self._data.get("vocabulary", []) or []:
-            if isinstance(entry, str):
-                vocab.add(entry)
-            elif isinstance(entry, dict) and entry.get("typed"):
-                vocab.add(entry["typed"], said=entry.get("said"))
+        vocab.add_from_list(self._data.get("vocabulary", []))
         self.transcriber = Transcriber(
             api_key=self._data["api_key"],
             language_hint=self._data.get("language_hint", ""),
@@ -128,6 +124,7 @@ class Yapper:
             fix_grammar=self._data.get("fix_grammar", True),
             output_mode=self._data.get("output_mode", "clean"),
             expand_spoken_symbols=self._data.get("expand_spoken_symbols", True),
+            text_model=self._data.get("text_model", "gpt-5-nano"),
             vocabulary=vocab,
             clean_wake_words=False  # Console mode doesn't use wake words
         )

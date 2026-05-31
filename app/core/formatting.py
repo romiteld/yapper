@@ -10,7 +10,7 @@ paraphrasing. Works the same for casual messaging and technical text.
 """
 
 import re
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple, Union
 
 from .logger import get_logger
 
@@ -18,33 +18,84 @@ logger = get_logger("formatting")
 
 TEXT_MODEL = "gpt-5-nano"
 
-# Ordered, conservative spoken-symbol rules: (compiled_pattern, replacement).
-# Order matters — longer/structural cues are matched before single tokens so
-# that e.g. "dash dash help" beats "dash". Each rule only fires on a clear cue
-# to avoid corrupting ordinary prose.
-_SYMBOL_RULES: List[Tuple[re.Pattern, str]] = [
-    # Long flags: "dash dash help" -> "--help"
+# Whitelist of suffixes for the "<name> dot <ext>" rule: common file
+# extensions + TLDs only. Restricting to this set keeps ordinary prose like
+# "the dot product" / "polka dot" untouched while still handling
+# "main dot py" -> "main.py" and "example dot com" -> "example.com".
+_DOT_SUFFIXES = [
+    # file extensions
+    "py", "js", "ts", "tsx", "jsx", "json", "yaml", "yml", "md", "txt",
+    "sh", "toml", "go", "rs",
+    # TLDs
+    "com", "org", "net", "io", "dev",
+]
+_DOT_SUFFIX_RE = "|".join(sorted(_DOT_SUFFIXES, key=len, reverse=True))
+
+# Common words that, when they precede "dash <letter>", indicate ordinary
+# prose ("a dash of salt", "he made a dash", "grade dash a") rather than a CLI
+# flag. The single-letter dash rule is suppressed after any of these.
+_DASH_PROSE_PRECEDERS = frozenset({
+    "a", "an", "the", "of", "in", "made", "that", "this", "his", "her", "your",
+})
+
+# If the letter after "dash" is itself a standalone English word/article, the
+# phrase reads as prose ("grade dash a", "... dash i ...") — not a CLI flag.
+_DASH_PROSE_LETTERS = frozenset({"a", "i"})
+
+
+def _expand_single_dash(match: "re.Match") -> str:
+    """Replace "dash <letter>" -> "-<letter>" unless it reads as prose.
+
+    ``match`` captures an optional preceding word so we can suppress the
+    conversion right after an article/preposition/common prose word, or when
+    the flag "letter" is itself a standalone English article (a / i).
+    """
+    preceder = (match.group("pre") or "").lower()
+    letter = match.group("letter")
+    if preceder in _DASH_PROSE_PRECEDERS or letter.lower() in _DASH_PROSE_LETTERS:
+        return match.group(0)  # leave untouched
+    prefix = match.group("pre")
+    space = match.group("presp") or ""
+    return f"{prefix}{space}-{letter}" if prefix else f"-{letter}"
+
+
+# Ordered, conservative spoken-symbol rules. Each is (compiled_pattern,
+# replacement) where replacement is a string or a callable. Order matters —
+# longer/structural cues are matched before single tokens. Every rule fires
+# ONLY on an unambiguous cue so ordinary prose is never corrupted.
+_SYMBOL_RULES: List[Tuple[re.Pattern, Union[str, Callable]]] = [
+    # Long flags: "dash dash help" -> "--help" (unambiguous: double "dash").
     (re.compile(r"\bdash dash (\w+)\b", re.IGNORECASE), r"--\1"),
-    # Short flags: "dash f" -> "-f" (single letter only, to avoid prose)
-    (re.compile(r"\bdash ([a-zA-Z])\b", re.IGNORECASE), r"-\1"),
-    # File extensions: "deployment dot yaml" -> "deployment.yaml"
+    # Short flags: "dash f" -> "-f" (single letter), guarded against prose by
+    # inspecting the preceding word (see _expand_single_dash).
     (
         re.compile(
-            r"\b(\w+) dot (py|yaml|yml|json|js|ts|tsx|jsx|md|txt|sh|toml|cfg|ini|env|go|rs|rb|java|c|cpp|h)\b",
+            r"(?:(?P<pre>\w+)(?P<presp>\s+))?\bdash\s+(?P<letter>[a-zA-Z])\b",
+            re.IGNORECASE,
+        ),
+        _expand_single_dash,
+    ),
+    # File extensions / TLDs: "deployment dot yaml" -> "deployment.yaml".
+    # Whitelisted suffixes only, so "the dot product" is untouched.
+    (
+        re.compile(
+            rf"\b(\w+) dot ({_DOT_SUFFIX_RE})\b",
             re.IGNORECASE,
         ),
         r"\1.\2",
     ),
-    # Backtick pair: "backtick <word(s)> backtick" -> "`<word(s)>`"
-    # Match up to 5 words between the two backtick cues.
+    # Backtick pair: "backtick <word(s)> backtick" -> "`<word(s)>`".
+    # Requires both backtick cues, so prose is safe.
     (re.compile(r"\bbacktick (\w+(?:\s+\w+){0,4}) backtick\b", re.IGNORECASE), r"`\1`"),
-    # Single standalone backtick cue (fallback).
+    # Single standalone backtick cue (explicit word "backtick").
     (re.compile(r"\bbacktick\b", re.IGNORECASE), "`"),
-    # Parentheses
+    # Parentheses — require the explicit word "paren".
     (re.compile(r"\bopen paren\b", re.IGNORECASE), "("),
     (re.compile(r"\bclose paren\b", re.IGNORECASE), ")"),
-    # New line
-    (re.compile(r"\bnew line\b", re.IGNORECASE), "\n"),
+    # Newline — ONLY on an explicit standalone trigger, never the bare
+    # "new line" (which mangles "a new line of thinking"). "press enter" and
+    # "insert new line" are unambiguous dictation commands.
+    (re.compile(r"\b(?:press enter|insert new line)\b", re.IGNORECASE), "\n"),
 ]
 
 
@@ -52,9 +103,14 @@ def expand_spoken_symbols(text: str) -> str:
     """
     Expand spoken-symbol cues to their characters.
 
-    Conservative: only fires on clear cues (e.g. "dash dash <word>",
-    "<name> dot py", "backtick", "open/close paren", "new line"). Ordinary
-    prose is left untouched.
+    Conservative by design: every rule fires only on an unambiguous cue, so
+    ordinary prose is left untouched. Specifically:
+      - "dash dash <word>" -> "--word"; "dash <letter>" -> "-<letter>" only
+        when not preceded by a prose word (a/an/the/of/...).
+      - "<name> dot <ext>" -> "<name>.<ext>" for whitelisted extensions/TLDs
+        only ("main dot py", "example dot com"); "the dot product" is safe.
+      - "backtick ... backtick" -> "`...`"; "open/close paren" -> "(" / ")".
+      - newline ONLY via explicit "press enter" / "insert new line".
 
     Args:
         text: Raw transcription text.
@@ -91,15 +147,18 @@ class Formatter:
     still gets spoken-symbol expansion and vocabulary correction.
     """
 
-    def __init__(self, api_client, vocabulary):
+    def __init__(self, api_client, vocabulary, text_model: str = TEXT_MODEL):
         """
         Args:
             api_client: APIClient with a ``chat(messages, ...)`` method, or
                 None to skip all LLM cleanup/translation steps.
             vocabulary: Vocabulary used for correction and protected tokens.
+            text_model: Chat model used for the LLM cleanup/translation steps
+                (default ``gpt-5-nano``).
         """
         self._api = api_client
         self._vocab = vocabulary
+        self._text_model = text_model or TEXT_MODEL
 
     def format(
         self,
@@ -172,7 +231,7 @@ class Formatter:
                 {"role": "system", "content": system},
                 {"role": "user", "content": text},
             ],
-            model=TEXT_MODEL,
+            model=self._text_model,
             reasoning_effort="minimal",
         )
         return result.strip() if result else text
@@ -182,14 +241,20 @@ class Formatter:
             "You polish dictated prose. Fix grammar and punctuation, remove "
             "filler words (um, uh, like, you know), and produce clean, natural "
             "sentences while preserving the original meaning and tone. "
+            "Preserve all technical terms, code, identifiers, CamelCase, CLI "
+            "flags, and file paths exactly — never paraphrase or alter code "
+            "tokens (e.g. keep `kubectl apply -f` verbatim). "
             "Output ONLY the cleaned text, nothing else."
         )
+        protected = self._protected_tokens()
+        if protected:
+            system += f"\nProtected tokens (keep exactly as written): {protected}."
         result = self._api.chat(
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": text},
             ],
-            model=TEXT_MODEL,
+            model=self._text_model,
             reasoning_effort="minimal",
         )
         return result.strip() if result else text
@@ -212,7 +277,7 @@ class Formatter:
                 {"role": "system", "content": system},
                 {"role": "user", "content": text},
             ],
-            model=TEXT_MODEL,
+            model=self._text_model,
             reasoning_effort="minimal",
         )
         return result.strip() if result else text

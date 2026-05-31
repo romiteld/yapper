@@ -28,5 +28,7 @@ def test_schema_validates_expand_spoken_symbols_and_vocabulary():
     vtype, vvalidator, _ = constants.SETTINGS_SCHEMA["vocabulary"]
     assert vtype is list
     assert vvalidator([]) is True
+    assert vvalidator(["kubectl", {"said": None, "typed": "nginx"}]) is True
     assert vvalidator([{"said": None, "typed": "kubectl"}]) is True
+    assert vvalidator([{"said": None}]) is False
     assert vvalidator("not-a-list") is False

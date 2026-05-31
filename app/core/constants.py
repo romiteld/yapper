@@ -201,7 +201,11 @@ SETTINGS_SCHEMA: Dict[str, tuple] = {
     "vocabulary": (
         list,
         lambda x: isinstance(x, list)
-        and all(isinstance(t, dict) and "typed" in t for t in x),
+        and all(
+            isinstance(t, str)
+            or (isinstance(t, dict) and "typed" in t)
+            for t in x
+        ),
         "Custom vocabulary terms",
     ),
     "always_listening": (bool, None, "Enable wake word listening"),

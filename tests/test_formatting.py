@@ -23,8 +23,22 @@ def test_open_close_paren():
     assert expand_spoken_symbols("call open paren x close paren") == "call (x)"
 
 
-def test_new_line():
-    assert expand_spoken_symbols("line one new line line two") == "line one\nline two"
+def test_bare_new_line_is_not_expanded():
+    # The bare "new line" cue is DROPPED (it mangled "a new line of thinking").
+    # Newlines now require an explicit standalone trigger.
+    assert (
+        expand_spoken_symbols("line one new line line two")
+        == "line one new line line two"
+    )
+
+
+def test_explicit_newline_triggers():
+    assert expand_spoken_symbols("first line press enter second line") == (
+        "first line\nsecond line"
+    )
+    assert expand_spoken_symbols("para one insert new line para two") == (
+        "para one\npara two"
+    )
 
 
 def test_does_not_corrupt_prose():
@@ -128,6 +142,45 @@ def test_polished_mode_uses_grammar_prompt():
     assert out == "I think we should deploy now."
     system = api.chat.call_args.kwargs.get("messages")[0]["content"]
     assert "grammar" in system.lower()
+
+
+def test_polished_mode_preserves_code_and_identifiers():
+    # Polished must carry the same code/identifier/CLI-flag/path preservation
+    # constraint as clean, so it never paraphrases `kubectl apply -f`.
+    api = MagicMock()
+    api.chat.return_value = "ok"
+    fmt = Formatter(api, _vocab())
+    fmt.format("kubectl apply -f x", mode="polished",
+               expand_symbols=False, translate_to=None)
+    system = api.chat.call_args.kwargs.get("messages")[0]["content"].lower()
+    assert "cli flag" in system
+    assert "file path" in system
+    assert "never paraphrase" in system or "paraphrase" in system
+    assert "kubectl" in api.chat.call_args.kwargs.get("messages")[0]["content"]
+
+
+def test_text_model_defaults_to_gpt_5_nano():
+    api = MagicMock()
+    api.chat.return_value = "x"
+    fmt = Formatter(api, Vocabulary(load_starter=False))
+    fmt.format("hello", mode="clean", expand_symbols=False, translate_to=None)
+    assert api.chat.call_args.kwargs.get("model") == "gpt-5-nano"
+
+
+def test_text_model_is_configurable():
+    api = MagicMock()
+    api.chat.return_value = "x"
+    fmt = Formatter(api, Vocabulary(load_starter=False), text_model="gpt-5.4-nano")
+    fmt.format("hello", mode="clean", expand_symbols=False, translate_to=None)
+    assert api.chat.call_args.kwargs.get("model") == "gpt-5.4-nano"
+
+
+def test_text_model_used_for_translation_too():
+    api = MagicMock()
+    api.chat.return_value = "hola"
+    fmt = Formatter(api, Vocabulary(load_starter=False), text_model="gpt-5.4-nano")
+    fmt.format("hello", mode="clean", expand_symbols=False, translate_to="es")
+    assert api.chat.call_args.kwargs.get("model") == "gpt-5.4-nano"
 
 
 def test_llm_failure_falls_back_to_deterministic_text():
