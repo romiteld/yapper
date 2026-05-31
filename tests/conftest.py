@@ -1,8 +1,9 @@
 """Shared pytest fixtures for the Yapper suite.
 
 Puts the repo root on ``sys.path`` so ``import app...`` works under any runner,
-and provides an isolated temp settings path so tests never touch the real
-``app/settings.json``.
+and also puts ``app/`` on ``sys.path`` so Phase 1+ tests can use bare
+``import core.*`` imports. Provides an isolated temp settings path so tests
+never touch the real ``app/settings.json``.
 
 © 2026 Cloudelipute
 """
@@ -13,8 +14,14 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+APP_DIR = REPO_ROOT / "app"
+
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+# Make `import core.*` work for Phase 1+ tests.
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
 
 
 @pytest.fixture
@@ -25,3 +32,12 @@ def temp_settings_path(tmp_path, monkeypatch):
     path = tmp_path / "settings.json"
     monkeypatch.setattr(config, "_SETTINGS_FILE", path, raising=False)
     return path
+
+
+@pytest.fixture
+def temp_settings(tmp_path):
+    """A Settings instance backed by a throwaway JSON file (Phase 1+ fixture)."""
+    from core.config import Settings
+
+    path = tmp_path / "settings.json"
+    return Settings(settings_path=path)
