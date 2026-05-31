@@ -3,8 +3,9 @@ Yapper Transcriber
 ==================
 Thin orchestrator: engine.transcribe() -> wake-word clean -> formatting.
 
-The real formatting subsystem lands in Phase 3 (core/formatting.Formatter).
-Until then, a passthrough formatter is used by default.
+Phase 3: supports Vocabulary + Formatter for no-slop pipeline. Vocabulary
+builds the Whisper prompt bias and performs fuzzy correction; Formatter runs
+spoken-symbol expansion, vocabulary correction, and optional LLM cleanup.
 
 © 2026 Cloudelipute
 """
@@ -62,6 +63,7 @@ class Transcriber:
         expand_spoken_symbols: bool = True,
         formatter: Optional[object] = None,
         clean_wake_words: bool = True,
+        vocabulary: Optional[object] = None,
         # Legacy compat (Phase 1/old callers); folded into output_mode.
         fix_grammar: bool = True,
     ):
@@ -78,6 +80,8 @@ class Transcriber:
         self.clean_wake_words = clean_wake_words
         # Stored for the Phase 3 Formatter to consume (legacy compat).
         self.fix_grammar = fix_grammar
+        # Phase 3: Vocabulary for Whisper bias + correction.
+        self._vocabulary = vocabulary
         self._formatter = formatter or _PassthroughFormatter()
 
     def transcribe(
@@ -89,10 +93,17 @@ class Transcriber:
         """Transcribe + clean + format an audio file."""
         logger.info(f"Transcribing: {audio_path}")
 
+        # Build Whisper prompt bias from vocabulary (Phase 3), or use the
+        # caller-supplied prompt (Phase 2 compat, e.g. test_transcriber_passes_prompt_bias).
+        vocab_prompt = None
+        if self._vocabulary is not None:
+            vocab_prompt = self._vocabulary.whisper_prompt() or None
+        effective_prompt = prompt or vocab_prompt
+
         text = self._engine.transcribe(
             audio_path,
             language=self.language_hint or None,
-            prompt=prompt,
+            prompt=effective_prompt,
         )
 
         if delete_audio:
