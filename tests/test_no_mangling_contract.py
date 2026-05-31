@@ -34,6 +34,24 @@ CASUAL_STRINGS = [
     "a dash a day keeps the doctor away",  # 'dash a' must not become '-a'
     "he made a dash",
     "grade dash a",                # 'dash a' (letter is an article) — no flag
+    # Bug #7 new cases: single-dash non-CLI preceders
+    "she dash B list celeb",
+    "we need plan dash B",
+    "I got a grade dash B",
+    "choose option dash C",
+    # Bug #22 new cases: double-dash after prose words
+    "the score was dash dash even",
+    "a long dash dash mark",
+    "plan dash dash backup",
+    # Bug #23 new cases: lone backtick in prose
+    "the backtick of doom",
+    "what is a backtick here",
+    # Bug #6 new cases: unpaired paren cues in prose
+    "please close paren the deal",
+    "the open paren house",
+    # Bug #21 new cases: press enter followed by prose words
+    "press enter to continue",
+    "I press enter the room",
 ]
 
 

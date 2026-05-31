@@ -76,6 +76,38 @@ def test_reprocess_text_never_raises_returns_original(settings):
 
 
 def test_history_window_reprocess_inserts_via_typer(qtbot, tmp_path, settings, monkeypatch):
+    """Reprocess runs off the GUI thread and delivers the result via a queued
+    signal.  We call the private _on_reprocess_done slot directly to verify
+    that it types the text — the threading/signal wiring is exercised by the
+    _reprocess_selected test below."""
+    settings.set("output_mode", "verbatim")
+    settings.set("expand_spoken_symbols", True)
+    settings.set("api_key", "")
+    hist = TranscriptionHistory(history_dir=tmp_path, enabled=True)
+    hist.add(TranscriptionRecord.create("dash dash help", 1.0))
+    win = HistoryWindow(hist, settings=settings)
+    qtbot.addWidget(win)
+
+    typed = {}
+    import ui.history_window as hw
+
+    class FakeTyper:
+        def type_text(self, text, method="paste"):
+            typed["text"] = text
+            typed["method"] = method
+            return True
+
+    monkeypatch.setattr(hw, "TextTyper", FakeTyper)
+    # Call the GUI-thread slot directly (the slot is what does the typing).
+    win._on_reprocess_done("--help expanded")
+    assert typed["method"] == "paste"
+    assert "--help" in typed["text"]
+
+
+def test_history_window_reprocess_selected_spawns_thread(qtbot, tmp_path, settings, monkeypatch):
+    """_reprocess_selected() disables the button and emits the result via a
+    worker thread + queued signal rather than blocking the GUI thread."""
+    import threading
     settings.set("output_mode", "verbatim")
     settings.set("expand_spoken_symbols", True)
     settings.set("api_key", "")
@@ -95,7 +127,13 @@ def test_history_window_reprocess_inserts_via_typer(qtbot, tmp_path, settings, m
             return True
 
     monkeypatch.setattr(hw, "TextTyper", FakeTyper)
+
     win._reprocess_selected()
+    # Button should be disabled immediately (while the thread runs).
+    assert not win._reprocess_btn.isEnabled()
+    # Wait for the worker thread to finish and the queued signal to be processed.
+    qtbot.waitUntil(lambda: win._reprocess_btn.isEnabled(), timeout=3000)
+    assert "method" in typed
     assert typed["method"] == "paste"
     assert "--help" in typed["text"]
 
