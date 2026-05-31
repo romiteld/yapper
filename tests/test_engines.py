@@ -52,3 +52,43 @@ def test_cloud_engine_default_model():
     eng = CloudEngine(api_client=api)
     eng.transcribe("/tmp/x.wav")
     assert api.transcribe.call_args.kwargs["model"] == "gpt-4o-mini-transcribe"
+
+
+from core.engines.local import LocalEngine, LocalEngineUnavailable
+
+
+def test_local_engine_is_engine():
+    assert issubclass(LocalEngine, TranscriptionEngine)
+
+
+def test_local_engine_uses_injected_backend(fake_local_backend):
+    eng = LocalEngine(model="base")
+    eng._backend = fake_local_backend  # bypass lazy load
+    out = eng.transcribe("/tmp/x.wav", language="en", prompt="ignored")
+    assert out == "local transcript"  # stripped from fixture's " local transcript "
+    fake_local_backend.transcribe.assert_called_once()
+
+
+def test_local_engine_lazy_loads_once(monkeypatch, fake_local_backend):
+    eng = LocalEngine(model="base")
+    calls = {"n": 0}
+
+    def _fake_load():
+        calls["n"] += 1
+        return fake_local_backend
+
+    monkeypatch.setattr(eng, "_load_backend", _fake_load)
+    eng.transcribe("/tmp/x.wav")
+    eng.transcribe("/tmp/y.wav")
+    assert calls["n"] == 1  # backend cached after first call
+
+
+def test_local_engine_missing_extra_raises(monkeypatch):
+    eng = LocalEngine(model="base")
+
+    def _boom():
+        raise LocalEngineUnavailable("install the [local] extra")
+
+    monkeypatch.setattr(eng, "_load_backend", _boom)
+    with pytest.raises(LocalEngineUnavailable):
+        eng.transcribe("/tmp/x.wav")
