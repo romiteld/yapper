@@ -35,3 +35,38 @@ def test_engine_schema_rejects_bad_value():
     assert typ is str
     assert validator("cloud") is True
     assert validator("bogus") is False
+
+
+def test_legacy_file_backfills_new_keys(tmp_path):
+    from core.config import Settings, set_settings_path
+    legacy = {
+        "api_key": "sk-legacy",
+        "hotkey": "f8",
+        "translate_to": "",
+        "fix_grammar": True,
+        "always_listening": True,  # legacy key, must be preserved
+    }
+    p = tmp_path / "settings.json"
+    p.write_text(json.dumps(legacy), encoding="utf-8")
+
+    set_settings_path(p)
+    s = Settings(p).load()
+
+    # New keys present with sane defaults.
+    assert s.get("engine") == "cloud"
+    assert s.get("cloud_stt_model") == "gpt-4o-mini-transcribe"
+    assert s.get("text_model") == "gpt-5-nano"
+    # Legacy values preserved.
+    assert s.get("api_key") == "sk-legacy"
+    assert s.get("always_listening") is True
+
+
+def test_migrate_is_idempotent(tmp_path):
+    from core.config import Settings
+    p = tmp_path / "settings.json"
+    p.write_text(json.dumps({"api_key": "sk-x"}), encoding="utf-8")
+    s = Settings(p).load()
+    first = s.get("text_model")
+    s.save()
+    s2 = Settings(p).load()
+    assert s2.get("text_model") == first == "gpt-5-nano"

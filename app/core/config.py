@@ -93,6 +93,7 @@ class Settings:
 
             self._migrate_legacy(file_data)
             logger.debug(f"Loaded settings from {self._path}")
+            self.migrate()
 
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in settings file: {e}")
@@ -248,6 +249,31 @@ class Settings:
         self._data = DEFAULT_SETTINGS.copy()
         self.save()
         logger.info(f"Created default settings file at {self._path}")
+
+    def migrate(self) -> bool:
+        """Backfill new keys onto legacy settings files.
+
+        Returns True if any value was changed (caller may choose to save).
+        Idempotent: running twice changes nothing.
+        """
+        changed = False
+
+        # Backfill any DEFAULT_SETTINGS key missing from the loaded data.
+        for key, default in DEFAULT_SETTINGS.items():
+            if key not in self._data:
+                self._data[key] = default
+                changed = True
+
+        # Legacy: `always_listening` was the wake-word toggle. Mirror it onto
+        # the new activation_mode if that key is owned elsewhere (Phase 1).
+        # We only set it when activation_mode is unknown to avoid clobbering.
+        if "activation_mode" not in DEFAULT_SETTINGS:
+            # activation_mode is owned by Phase 1; nothing to migrate here yet.
+            pass
+
+        if changed:
+            logger.info("Migrated legacy settings: backfilled new keys")
+        return changed
 
 
 # Convenience function for backward compatibility
