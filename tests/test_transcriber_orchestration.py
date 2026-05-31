@@ -66,3 +66,29 @@ def test_transcriber_empty_engine_result_returns_none(tmp_path):
     eng = _engine_returning(None)
     t = Transcriber(engine=eng)
     assert t.transcribe(str(wav), delete_audio=False) is None
+
+
+def test_transcriber_stores_fix_grammar():
+    eng = _engine_returning("ok")
+    assert Transcriber(engine=eng, fix_grammar=False).fix_grammar is False
+    assert Transcriber(engine=eng, fix_grammar=True).fix_grammar is True
+
+
+def test_transcribe_for_wake_word_lowercases_and_strips(tmp_path):
+    wav = tmp_path / "a.wav"
+    wav.write_bytes(b"x")
+    eng = _engine_returning("  Yapper START  ")
+    t = Transcriber(engine=eng, language_hint="en")
+
+    out = t.transcribe_for_wake_word(str(wav))
+
+    assert out == "yapper start"
+    eng.transcribe.assert_called_once_with(str(wav), language="en")
+
+
+def test_transcribe_for_wake_word_returns_none_on_empty(tmp_path):
+    wav = tmp_path / "a.wav"
+    wav.write_bytes(b"x")
+    eng = _engine_returning(None)
+    t = Transcriber(engine=eng)
+    assert t.transcribe_for_wake_word(str(wav)) is None

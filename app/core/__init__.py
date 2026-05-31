@@ -16,6 +16,11 @@ from .constants import (
     HOTKEYS,
     DEFAULT_SETTINGS,
     SETTINGS_SCHEMA,
+    ENGINES,
+    CLOUD_STT_MODELS,
+    LOCAL_STT_MODELS,
+    TEXT_MODELS,
+    ACTIVATION_MODES,
 )
 
 # Logging
@@ -107,6 +112,11 @@ __all__ = [
     "HOTKEYS",
     "DEFAULT_SETTINGS",
     "SETTINGS_SCHEMA",
+    "ENGINES",
+    "CLOUD_STT_MODELS",
+    "LOCAL_STT_MODELS",
+    "TEXT_MODELS",
+    "ACTIVATION_MODES",
     # Logging
     "setup_logging",
     "get_logger",

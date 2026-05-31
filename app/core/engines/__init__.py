@@ -27,16 +27,21 @@ def get_engine(settings) -> TranscriptionEngine:
 
     Returns:
         A configured TranscriptionEngine (CloudEngine or LocalEngine).
+
+    Raises:
+        ValueError: if the configured engine name is unknown.
     """
-    engine = settings.get("engine")
-    if engine == "local":
+    name = settings.get("engine")
+    if name == "local":
         model = settings.get("local_stt_model")
         logger.info(f"Using LocalEngine (model={model})")
         return LocalEngine(model=model)
 
-    # Default: cloud.
-    from ..api import APIClient
-    api = APIClient(api_key=settings.get("api_key"))
-    model = settings.get("cloud_stt_model")
-    logger.info(f"Using CloudEngine (model={model})")
-    return CloudEngine(api_client=api, model=model)
+    if name == "cloud":
+        from ..api import APIClient
+        api = APIClient(api_key=settings.get("api_key"))
+        model = settings.get("cloud_stt_model")
+        logger.info(f"Using CloudEngine (model={model})")
+        return CloudEngine(api_client=api, model=model)
+
+    raise ValueError(f"Unknown engine: {name!r}")

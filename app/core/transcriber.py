@@ -76,6 +76,8 @@ class Transcriber:
         self.output_mode = output_mode
         self.expand_spoken_symbols = expand_spoken_symbols
         self.clean_wake_words = clean_wake_words
+        # Stored for the Phase 3 Formatter to consume (legacy compat).
+        self.fix_grammar = fix_grammar
         self._formatter = formatter or _PassthroughFormatter()
 
     def transcribe(
@@ -114,6 +116,10 @@ class Transcriber:
             expand_symbols=self.expand_spoken_symbols,
             translate_to=self.translate_to or None,
         )
+
+        if not text:
+            logger.warning("Formatter returned empty result")
+            return None
 
         logger.info(f"Final text ({len(text)} chars): {text[:50]}...")
         return text

@@ -264,13 +264,6 @@ class Settings:
                 self._data[key] = default
                 changed = True
 
-        # Legacy: `always_listening` was the wake-word toggle. Mirror it onto
-        # the new activation_mode if that key is owned elsewhere (Phase 1).
-        # We only set it when activation_mode is unknown to avoid clobbering.
-        if "activation_mode" not in DEFAULT_SETTINGS:
-            # activation_mode is owned by Phase 1; nothing to migrate here yet.
-            pass
-
         if changed:
             logger.info("Migrated legacy settings: backfilled new keys")
         return changed

@@ -66,7 +66,10 @@ def test_local_engine_uses_injected_backend(fake_local_backend):
     eng._backend = fake_local_backend  # bypass lazy load
     out = eng.transcribe("/tmp/x.wav", language="en", prompt="ignored")
     assert out == "local transcript"  # stripped from fixture's " local transcript "
-    fake_local_backend.transcribe.assert_called_once()
+    # `language` is forwarded; `prompt` is intentionally NOT forwarded.
+    fake_local_backend.transcribe.assert_called_once_with(
+        "/tmp/x.wav", language="en"
+    )
 
 
 def test_local_engine_lazy_loads_once(monkeypatch, fake_local_backend):
@@ -116,6 +119,12 @@ def test_get_engine_local(settings_factory):
     eng = get_engine(s)
     assert isinstance(eng, LocalEngine)
     assert eng._model == "small"
+
+
+def test_get_engine_unknown_raises(settings_factory):
+    s = settings_factory(engine="bogus")
+    with pytest.raises(ValueError, match="bogus"):
+        get_engine(s)
 
 
 def test_get_engine_exported_from_core():

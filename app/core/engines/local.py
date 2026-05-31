@@ -58,6 +58,10 @@ class LocalEngine(TranscriptionEngine):
         language: Optional[str] = None,
         prompt: Optional[str] = None,
     ) -> Optional[str]:
+        if prompt is not None:
+            logger.debug(
+                "LocalEngine ignores prompt (no vocabulary bias for local Whisper)"
+            )
         if self._backend is None:
             self._backend = self._load_backend()
         result = self._backend.transcribe(wav_path, language=language)

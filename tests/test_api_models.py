@@ -1,8 +1,4 @@
 """Phase 2: APIClient passes correct OpenAI 2.x models/params; retry preserved."""
-from unittest.mock import mock_open, patch
-
-import pytest
-
 from core.api import APIClient
 
 
