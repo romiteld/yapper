@@ -149,15 +149,17 @@ class APIClient:
         self,
         audio_path: str,
         language: Optional[str] = None,
-        model: str = "whisper-1"
+        model: str = "gpt-4o-mini-transcribe",
+        prompt: Optional[str] = None,
     ) -> Optional[str]:
         """
-        Transcribe audio file to text using Whisper.
+        Transcribe audio file to text.
 
         Args:
             audio_path: Path to audio file.
             language: Optional language hint (ISO code).
-            model: Whisper model to use.
+            model: STT model (default gpt-4o-mini-transcribe; whisper-1 selectable).
+            prompt: Optional vocabulary bias passed to the model.
 
         Returns:
             Transcribed text or None on failure.
@@ -169,19 +171,21 @@ class APIClient:
                 kwargs: Dict[str, Any] = {
                     "model": model,
                     "file": audio_file,
-                    "response_format": "text"
+                    "response_format": "text",
                 }
                 if language:
                     kwargs["language"] = language
+                if prompt:
+                    kwargs["prompt"] = prompt
 
                 result = client.audio.transcriptions.create(**kwargs)
 
-                # Handle different response formats
+                # response_format='text' returns a plain str; guard for objects.
                 if isinstance(result, str):
                     return result.strip()
                 return result.text.strip()
 
-        logger.debug(f"Transcribing: {audio_path}")
+        logger.debug(f"Transcribing: {audio_path} (model={model})")
         text = self._with_retry(_do_transcribe, "Transcription")
 
         if text:
