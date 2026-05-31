@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Yapper is a portable Windows desktop application for speech-to-text transcription. It uses OpenAI's Whisper API for transcription and GPT-4.1-nano for translation/grammar correction. The application includes an embedded Python 3.11 runtime—no Python installation required.
+Yapper is a cross-platform push-to-talk speech-to-text application for engineers. It uses OpenAI's Whisper API for transcription and GPT-4.1-nano for translation/grammar correction. Clone-first, uv-managed — Python runtime is managed automatically by uv.
 
 **Two modes:**
 - **System Tray mode** (`yapper_tray.py` v3.0.0) - Default. Background app with wake word detection ("Yapper start/stop")
@@ -12,20 +12,17 @@ Yapper is a portable Windows desktop application for speech-to-text transcriptio
 
 ## Running the Application
 
-```batch
-# First-time setup (installs pip packages into embedded Python)
-INSTALL.bat
+```bash
+# First-time setup (creates .venv, installs deps via uv)
+./setup            # POSIX (macOS/Linux); setup.bat on Windows
 
-# Run the application (launches tray mode)
-Yapper.bat
+# Run the application
+./run.sh           # macOS/Linux; run.command (macOS double-click); run.bat (Windows)
 
-# Open settings
-Settings.bat
-
-# Direct execution for testing
-python\python.exe app\yapper.py        # Console mode
-python\pythonw.exe app\yapper_tray.py  # Tray mode (no console)
-python\python.exe app\settings_ui.py   # GUI settings
+# Run directly / for testing
+uv run python -m app        # the app (Phase 0: prints version; PySide6 app lands in Phase 4)
+uv run pytest               # run the test suite
+uv sync --extra local       # add on-device transcription engines
 ```
 
 ## Architecture
@@ -44,7 +41,7 @@ python\python.exe app\settings_ui.py   # GUI settings
 
 ## Dependencies
 
-Installed via INSTALL.bat into `python/`:
+Managed via `uv` / `pyproject.toml`:
 - `openai` - API client
 - `keyboard` - Global hotkey capture (Windows-specific)
 - `pyaudio` - Audio recording
@@ -71,8 +68,10 @@ app/
 ├── settings_ui.py     # customtkinter GUI settings
 ├── settings_console.py # CLI settings fallback
 └── settings.json      # Configuration
-python/                # Embedded Python 3.11 runtime
-*.bat                  # Windows launchers
+pyproject.toml         # uv-managed deps + dev/[local] extras
+setup / setup.bat      # uv sync bootstrap
+run.sh/.command/.bat   # thin launchers -> uv run python -m app
+tests/                 # pytest suite (conftest + smoke)
 ```
 
 ## Platform Notes
