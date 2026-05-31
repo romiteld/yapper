@@ -48,6 +48,24 @@ from .transcriber import Transcriber
 # Text Typing
 from .typer import TextTyper
 
+# Platform
+from .platform import IS_MAC, IS_WIN, IS_LINUX, default_hotkey, open_settings_pane, open_folder
+
+# Permissions
+from .permissions import (
+    PermissionStatus,
+    permission_status,
+    microphone_ok,
+    accessibility_trusted,
+    input_monitoring_ok,
+)
+
+# Hotkeys
+from .hotkeys import HotkeyManager
+
+# Notifications
+from .notifications import Notifier
+
 # Devices
 from .devices import (
     AudioDevice,
@@ -106,6 +124,23 @@ __all__ = [
     "Transcriber",
     # Text Typing
     "TextTyper",
+    # Platform
+    "IS_MAC",
+    "IS_WIN",
+    "IS_LINUX",
+    "default_hotkey",
+    "open_settings_pane",
+    "open_folder",
+    # Permissions
+    "PermissionStatus",
+    "permission_status",
+    "microphone_ok",
+    "accessibility_trusted",
+    "input_monitoring_ok",
+    # Hotkeys
+    "HotkeyManager",
+    # Notifications
+    "Notifier",
     # Devices
     "AudioDevice",
     "list_input_devices",
