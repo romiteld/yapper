@@ -89,12 +89,39 @@ HOTKEYS: List[str] = [
 ]
 
 # =============================================================================
+# ENGINES & MODELS
+# =============================================================================
+
+# Transcription engine backends
+ENGINES: List[str] = ["cloud", "local"]
+
+# Activation modes (consumed by hotkeys.py in Phase 1)
+ACTIVATION_MODES: List[str] = ["push_to_talk", "toggle", "wake_word"]
+
+# Cloud speech-to-text models (gpt-4o-mini-transcribe default; whisper-1 kept
+# for long-tail languages / timestamps).
+CLOUD_STT_MODELS: List[str] = ["gpt-4o-mini-transcribe", "whisper-1"]
+
+# Local on-device model sizes (mlx-whisper / faster-whisper).
+LOCAL_STT_MODELS: List[str] = ["tiny", "base", "small", "medium", "large-v3"]
+
+# Text post-processing / translation models.
+# gpt-4.1-nano is DEPRECATED (shutdown 2026-10-23) and intentionally excluded.
+TEXT_MODELS: List[str] = ["gpt-5-nano", "gpt-5.4-nano"]
+
+# =============================================================================
 # DEFAULT SETTINGS
 # =============================================================================
 
 DEFAULT_SETTINGS: Dict[str, any] = {
     # API Configuration
     "api_key": "",
+
+    # Engine & models (Phase 2)
+    "engine": "cloud",                            # cloud | local
+    "cloud_stt_model": "gpt-4o-mini-transcribe",  # or whisper-1
+    "local_stt_model": "base",                    # mlx/faster-whisper size
+    "text_model": "gpt-5-nano",                   # post-processing/translation
 
     # Recording
     "hotkey": "f8",
@@ -131,6 +158,10 @@ DEFAULT_SETTINGS: Dict[str, any] = {
 # Format: key -> (type, validator_func_or_None, description)
 SETTINGS_SCHEMA: Dict[str, tuple] = {
     "api_key": (str, None, "OpenAI API key"),
+    "engine": (str, lambda x: x in ENGINES, "Transcription engine"),
+    "cloud_stt_model": (str, lambda x: x in CLOUD_STT_MODELS, "Cloud STT model"),
+    "local_stt_model": (str, lambda x: x in LOCAL_STT_MODELS, "Local STT model"),
+    "text_model": (str, lambda x: x in TEXT_MODELS, "Text post-processing model"),
     "hotkey": (str, lambda x: x in HOTKEYS, "Recording hotkey"),
     "activation_mode": (
         str,
