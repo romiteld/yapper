@@ -75,3 +75,33 @@ def test_no_deprecated_model_referenced():
     import core.api as api_mod
     src = inspect.getsource(api_mod)
     assert "gpt-4.1-nano" not in src
+
+
+class _RateLimitError(Exception):
+    """Stand-in named to match _is_retryable_error allow-list."""
+    def __init__(self):
+        super().__init__("rate limited")
+_RateLimitError.__name__ = "RateLimitError"
+
+
+def test_transcribe_retries_then_succeeds(mock_openai, tmp_path, monkeypatch):
+    monkeypatch.setattr("core.api.time.sleep", lambda *_: None)  # no real waiting
+    wav = tmp_path / "a.wav"
+    wav.write_bytes(b"RIFFfake")
+    mock_openai.audio.transcriptions.create.side_effect = [
+        _RateLimitError(),
+        "second try",
+    ]
+    client = APIClient(api_key="sk-test")
+    out = client.transcribe(str(wav))
+    assert out == "second try"
+    assert mock_openai.audio.transcriptions.create.call_count == 2
+
+
+def test_chat_gives_up_after_max_retries(mock_openai, monkeypatch):
+    monkeypatch.setattr("core.api.time.sleep", lambda *_: None)
+    mock_openai.chat.completions.create.side_effect = _RateLimitError()
+    client = APIClient(api_key="sk-test")
+    out = client.chat([{"role": "user", "content": "x"}])
+    assert out is None
+    assert mock_openai.chat.completions.create.call_count == 3  # MAX_RETRIES
