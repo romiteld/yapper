@@ -50,6 +50,10 @@ from .api import APIClient, APIError, APIConnectionError, APIRateLimitError
 # Transcription
 from .transcriber import Transcriber
 
+# No-slop formatting subsystem
+from .vocabulary import Vocabulary
+from .formatting import Formatter, expand_spoken_symbols
+
 # Engines
 from .engines import (
     TranscriptionEngine,
@@ -141,6 +145,10 @@ __all__ = [
     "APIRateLimitError",
     # Transcription
     "Transcriber",
+    # No-slop formatting
+    "Vocabulary",
+    "Formatter",
+    "expand_spoken_symbols",
     # Engines
     "TranscriptionEngine",
     "CloudEngine",
