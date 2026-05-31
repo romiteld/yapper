@@ -1,23 +1,23 @@
-"""Yapper entry point — ``python -m app``.
+"""`python -m app` entry point.
 
 © 2026 Cloudelipute
-
-Phase 0 placeholder: prints version/banner. The PySide6 tray app
-(``app.ui.app.main``) replaces this body in Phase 4.
 """
 
 import sys
+from pathlib import Path
 
-from app.core.constants import COPYRIGHT, VERSION
+# Ensure `app/` (this dir) is importable as the source root for bare imports.
+APP_DIR = Path(__file__).resolve().parent
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
+
+from cli import cli_main  # noqa: E402
 
 
 def main() -> int:
-    """Run Yapper. Returns a process exit code."""
-    print(f"Yapper {VERSION}")
-    print(COPYRIGHT)
-    print("The PySide6 app is wired up in Phase 4. Run the tests with: uv run pytest")
-    return 0
+    """Entry point for `python -m app` and the `yapper` script."""
+    return cli_main()
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(cli_main())

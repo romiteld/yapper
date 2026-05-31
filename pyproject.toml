@@ -56,6 +56,7 @@ Issues = "https://github.com/romiteld/yapper/issues"
 
 [project.scripts]
 yapper = "app.__main__:main"
+# Note: app.cli:cli_main is also valid; __main__:main delegates to it.
 
 [build-system]
 requires = ["hatchling"]
