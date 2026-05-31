@@ -6,7 +6,7 @@ Single source of truth for version, languages, hotkeys, and default settings.
 © 2026 Cloudelipute
 """
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 # =============================================================================
 # VERSION INFO
@@ -89,6 +89,16 @@ HOTKEYS: List[str] = [
 ]
 
 # =============================================================================
+# OUTPUT MODES (no-slop formatting)
+# =============================================================================
+
+# Output formatting modes for the no-slop subsystem.
+# technical = fix only caps/punctuation, never paraphrase code/identifiers
+# natural   = grammar-polished prose (filler removal, punctuation)
+# verbatim  = no LLM cleanup at all
+OUTPUT_MODES: List[str] = ["technical", "natural", "verbatim"]
+
+# =============================================================================
 # ENGINES & MODELS
 # =============================================================================
 
@@ -137,6 +147,11 @@ DEFAULT_SETTINGS: Dict[str, any] = {
     "translate_to": "",   # Target language (empty = no translation)
     "fix_grammar": True,  # Auto-correct grammar when not translating
 
+    # No-slop formatting (Phase 3)
+    "output_mode": "technical",       # technical | natural | verbatim
+    "expand_spoken_symbols": True,    # expand "dash dash help" -> "--help"
+    "vocabulary": [],                 # list of {said, typed} term dicts
+
     # Wake Word (Tray mode)
     "always_listening": True,
     "listen_interval": 3,  # seconds between wake word checks
@@ -178,6 +193,14 @@ SETTINGS_SCHEMA: Dict[str, tuple] = {
     "language_hint": (str, lambda x: x == "" or x in LANGUAGE_CODES, "Input language hint"),
     "translate_to": (str, lambda x: x == "" or x in LANGUAGE_CODES, "Target translation language"),
     "fix_grammar": (bool, None, "Auto-correct grammar"),
+    "output_mode": (str, lambda x: x in OUTPUT_MODES, "Output formatting mode"),
+    "expand_spoken_symbols": (bool, None, "Expand spoken symbols to characters"),
+    "vocabulary": (
+        list,
+        lambda x: isinstance(x, list)
+        and all(isinstance(t, dict) and "typed" in t for t in x),
+        "Custom vocabulary terms",
+    ),
     "always_listening": (bool, None, "Enable wake word listening"),
     "listen_interval": (int, lambda x: 1 <= x <= 10, "Wake word check interval"),
     "wake_word_fuzzy": (bool, None, "Fuzzy wake word matching"),
