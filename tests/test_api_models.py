@@ -44,3 +44,34 @@ def test_transcribe_omits_empty_prompt_and_language(mock_openai, tmp_path):
     kwargs = mock_openai.audio.transcriptions.create.call_args.kwargs
     assert "language" not in kwargs
     assert "prompt" not in kwargs
+
+
+def test_chat_uses_gpt5nano_and_reasoning_effort(mock_openai):
+    client = _make_client()
+    out = client.chat([{"role": "user", "content": "hi"}])
+    assert out == "cleaned text"
+    kwargs = mock_openai.chat.completions.create.call_args.kwargs
+    assert kwargs["model"] == "gpt-5-nano"
+    assert kwargs["reasoning_effort"] == "minimal"
+    # Reasoning models: legacy sampling args must NOT be sent.
+    assert "temperature" not in kwargs
+    assert "max_tokens" not in kwargs
+
+
+def test_fix_grammar_default_model(mock_openai):
+    client = _make_client()
+    client.fix_grammar("teh cat")
+    assert mock_openai.chat.completions.create.call_args.kwargs["model"] == "gpt-5-nano"
+
+
+def test_translate_default_model(mock_openai):
+    client = _make_client()
+    client.translate("hello", target_language="es")
+    assert mock_openai.chat.completions.create.call_args.kwargs["model"] == "gpt-5-nano"
+
+
+def test_no_deprecated_model_referenced():
+    import inspect
+    import core.api as api_mod
+    src = inspect.getsource(api_mod)
+    assert "gpt-4.1-nano" not in src

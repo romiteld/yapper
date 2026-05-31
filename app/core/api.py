@@ -196,42 +196,37 @@ class APIClient:
     def chat(
         self,
         messages: List[Dict[str, str]],
-        model: str = "gpt-4.1-nano",
-        temperature: float = 0.3,
-        max_tokens: int = 2000
+        model: str = "gpt-5-nano",
+        reasoning_effort: str = "minimal",
     ) -> Optional[str]:
         """
-        Send chat completion request.
+        Send a chat completion request to a reasoning model.
 
         Args:
-            messages: List of message dictionaries.
-            model: Model to use.
-            temperature: Sampling temperature.
-            max_tokens: Maximum tokens in response.
+            messages: List of message dicts.
+            model: Text model (default gpt-5-nano).
+            reasoning_effort: 'minimal' for fast, low-latency post-processing.
 
         Returns:
             Response text or None on failure.
         """
         def _do_chat() -> str:
             client = self._get_client()
-
             response = client.chat.completions.create(
                 model=model,
                 messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens
+                reasoning_effort=reasoning_effort,
             )
-
             return response.choices[0].message.content.strip()
 
-        logger.debug(f"Chat request with {len(messages)} messages")
+        logger.debug(f"Chat request ({model}) with {len(messages)} messages")
         return self._with_retry(_do_chat, "Chat")
 
     def translate(
         self,
         text: str,
         target_language: str,
-        model: str = "gpt-4.1-nano"
+        model: str = "gpt-5-nano",
     ) -> Optional[str]:
         """
         Translate text to target language.
@@ -259,7 +254,7 @@ class APIClient:
         ]
 
         logger.debug(f"Translating to {lang_name}")
-        result = self.chat(messages, model=model, temperature=0.3)
+        result = self.chat(messages, model=model)
 
         if result:
             return result
@@ -270,7 +265,7 @@ class APIClient:
     def fix_grammar(
         self,
         text: str,
-        model: str = "gpt-4.1-nano"
+        model: str = "gpt-5-nano",
     ) -> Optional[str]:
         """
         Fix grammar and punctuation in text.
@@ -295,7 +290,7 @@ class APIClient:
         ]
 
         logger.debug("Fixing grammar")
-        result = self.chat(messages, model=model, temperature=0.2)
+        result = self.chat(messages, model=model)
 
         if result:
             return result
