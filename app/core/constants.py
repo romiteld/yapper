@@ -71,8 +71,11 @@ LANGUAGE_CODES: Dict[str, str] = {k: v for k, v in LANGUAGES.items() if k}
 # HOTKEYS
 # =============================================================================
 
-# Available hotkey options - cross-platform compatible
+# Available hotkey options - cross-platform compatible (single F-keys are
+# Mac-safe; Ctrl/Alt combos are broken on macOS via pynput issue #297).
 HOTKEYS: List[str] = [
+    "f6",
+    "f7",
     "f8",
     "f9",
     "f10",
@@ -81,9 +84,8 @@ HOTKEYS: List[str] = [
     "pause",
     "scroll lock",
     "insert",
-    "ctrl+shift+r",
-    "ctrl+shift+d",
-    "ctrl+alt+v",
+    "cmd+shift+space",
+    "shift+space",
 ]
 
 # =============================================================================
@@ -98,6 +100,10 @@ DEFAULT_SETTINGS: Dict[str, any] = {
     "hotkey": "f8",
     "audio_device_index": None,  # None = system default
     "audio_feedback": True,
+
+    # Activation & insertion (v4)
+    "activation_mode": "push_to_talk",  # push_to_talk | toggle | wake_word
+    "insertion_method": "paste",        # paste | type
 
     # Transcription
     "language_hint": "",  # Input language hint for Whisper (empty = auto-detect)
@@ -126,6 +132,16 @@ DEFAULT_SETTINGS: Dict[str, any] = {
 SETTINGS_SCHEMA: Dict[str, tuple] = {
     "api_key": (str, None, "OpenAI API key"),
     "hotkey": (str, lambda x: x in HOTKEYS, "Recording hotkey"),
+    "activation_mode": (
+        str,
+        lambda x: x in ("push_to_talk", "toggle", "wake_word"),
+        "How recording is triggered",
+    ),
+    "insertion_method": (
+        str,
+        lambda x: x in ("paste", "type"),
+        "How text is inserted at cursor",
+    ),
     "audio_device_index": ((int, type(None)), None, "Audio input device index"),
     "audio_feedback": (bool, None, "Enable audio feedback sounds"),
     "language_hint": (str, lambda x: x == "" or x in LANGUAGE_CODES, "Input language hint"),

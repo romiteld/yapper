@@ -91,6 +91,7 @@ class Settings:
                     # Preserve unknown keys (comments, help, etc.)
                     self._extra_data[key] = value
 
+            self._migrate_legacy(file_data)
             logger.debug(f"Loaded settings from {self._path}")
 
         except json.JSONDecodeError as e:
@@ -231,6 +232,16 @@ class Settings:
                 return None
 
         return value
+
+    def _migrate_legacy(self, file_data: Dict[str, Any]) -> None:
+        """Map deprecated keys onto v4 keys when the new key is absent."""
+        if "activation_mode" not in file_data and "always_listening" in file_data:
+            legacy = file_data.get("always_listening")
+            self._data["activation_mode"] = "wake_word" if legacy else "toggle"
+            logger.info(
+                "Migrated legacy 'always_listening'=%s -> activation_mode=%s",
+                legacy, self._data["activation_mode"],
+            )
 
     def _create_default_file(self) -> None:
         """Create default settings file."""
