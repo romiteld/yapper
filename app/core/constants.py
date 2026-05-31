@@ -166,6 +166,10 @@ DEFAULT_SETTINGS: Dict[str, any] = {
 
     # History
     "save_history": True,
+
+    # UI / HUD
+    "show_hud": True,      # show the floating recording pill
+    "reduce_motion": False, # disable HUD level animation
 }
 
 # =============================================================================
@@ -214,4 +218,6 @@ SETTINGS_SCHEMA: Dict[str, tuple] = {
     "vad_enabled": (bool, None, "Enable voice activity detection"),
     "vad_threshold_db": (int, lambda x: -60 <= x <= -10, "VAD threshold in dB"),
     "save_history": (bool, None, "Save transcription history"),
+    "show_hud": (bool, None, "Show the floating recording HUD"),
+    "reduce_motion": (bool, None, "Disable HUD level animation"),
 }
