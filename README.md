@@ -1,195 +1,195 @@
-# Yapper - Speech to Text
+<div align="center">
 
-<p align="center">
-  <img src="yapper_icon.png" alt="Yapper" width="128">
-</p>
+# 🎙️ Yapper
 
-**Yapper** is a portable speech-to-text application that transcribes your voice and types the text wherever your cursor is positioned. Powered by OpenAI's Whisper and GPT-4.1-nano.
+**Push-to-talk speech-to-text for engineers — clone-first, bring-your-own-key.**
 
-## Features
+Record your voice, transcribe it, clean it up *without AI slop*, and paste it at your cursor.
+Cross-platform: **macOS (Apple Silicon)** and **Windows**, one codebase.
 
-- **Voice Activation**: Say "Yapper start" to begin, "Yapper stop" to end
-- **Hotkey Control**: Press F8 (configurable) to start/stop recording
-- **Translation**: Speak in any language, output in 40+ languages
-- **Grammar Correction**: Automatic grammar and punctuation fixes
-- **Voice Activity Detection**: Reduces API costs by skipping silent recordings
-- **System Tray Mode**: Runs quietly in background
-- **Cross-Platform**: Windows, macOS, and Linux support
+`© 2026 Cloudelipute` · MIT License · v4.0.0
+
+</div>
 
 ---
 
-## Quick Start (Windows Portable)
+## ✨ Features
 
-### Download Ready-to-Use Version
-
-1. Download the latest release from [Releases](https://github.com/romiteld/yapper/releases)
-2. Extract the zip anywhere
-3. Run `First Run.bat` to set up your API key
-4. Run `Yapper.bat` to start!
-
-### Get an API Key
-
-You need an OpenAI API key: https://platform.openai.com/api-keys
+| | |
+|---|---|
+| 🎯 **Push-to-talk** | Hold a key to dictate. Toggle and wake-word modes too. |
+| 🧠 **No "AI slop"** | Technical mode preserves identifiers, CLI flags, file paths & code **verbatim** — never paraphrased. |
+| 🔤 **Spoken symbols** | "dash dash help" → `--help`, "dot py" → `.py`, "open paren" → `(`. |
+| 📚 **Vocabulary** | Teach it your terms: "cube cuttle" → `kubectl`, "next J S" → `Next.js`. CSV import. |
+| ☁️ **Cloud or 🖥️ on-device** | Default cloud `gpt-4o-mini-transcribe`; optional local `mlx-whisper`/`faster-whisper`. |
+| 🪟 **Recording HUD** | Frameless always-on-top pill with live waveform and idle→listening→transcribing→done states. |
+| ⌨️ **Unicode-safe paste** | Clipboard-paste primary (⌘/Ctrl+V), `pynput` type fallback — emoji & CJK safe. |
+| 🔔 **Native notifications** | Cross-platform toasts; HUD is the always-on fallback. |
+| 🔑 **BYOK** | Your OpenAI key, your machine. No telemetry, no middleman. |
 
 ---
 
-## Installation (From Source)
+## 🏗️ Architecture
+
+```mermaid
+flowchart TB
+    subgraph UI["UI layer — PySide6 / Qt (one event loop)"]
+        tray["Tray"] --- wizard["Wizard"] --- settings["Settings"]
+        settings --- hud["HUD"] --- history["History"] --- notif["Notifications"]
+    end
+    UI -- "Qt signals/slots" --> CTRL
+    subgraph CTRL["Controller (app orchestrator)"]
+        direction LR
+        c["wires: hotkeys → record → engine → formatting → insert → HUD"]
+    end
+    CTRL --> hotkeys["hotkeys<br/>(pynput) PTT/toggle"]
+    CTRL --> audio["audio<br/>(sounddevice + vad)"]
+    CTRL --> engines["engines (STT)<br/>cloud / local"]
+    CTRL --> formatting["formatting<br/>no-slop / vocab / mode"]
+    CTRL --> typer["typer<br/>(pynput / clipboard)"]
+    CTRL --> hist["history"]
+    hotkeys --> perms["permissions<br/>(mac TCC)"]
+    engines --> api["api (OpenAI 2.x) /<br/>local model runtimes"]
+    classDef plat fill:#1b1b22,stroke:#ec2a8e,color:#fff;
+    class perms,api plat;
+```
+
+## 🔄 Dictation lifecycle
+
+```mermaid
+flowchart TD
+    idle(["idle"]) -->|"PTT key down / toggle / wake word"| listen["HUD: listening + waveform"]
+    listen --> record["record (sounddevice, 16 kHz mono)"]
+    record -->|"key up / stop"| vad{"VAD: speech?"}
+    vad -->|"silent"| idle
+    vad -->|"speech"| bias["vocabulary → Whisper prompt bias"]
+    bias --> stt["Engine.transcribe()<br/>cloud gpt-4o-mini-transcribe<br/>or local mlx / faster-whisper"]
+    stt --> fmt["Formatting:<br/>strip wake words → expand spoken symbols →<br/>canonical vocab correction → mode cleanup<br/>(technical / natural / verbatim) →<br/>optional translate (gpt-5-nano)"]
+    fmt --> paste["Typer: clipboard-paste at cursor (⌘/Ctrl+V)"]
+    paste --> done["HUD: done ✓ · sound cue · history.add() · notify"]
+    done --> idle
+```
+
+## 🚀 Onboarding flow
+
+```mermaid
+flowchart LR
+    welcome["Welcome"] --> engine["Engine<br/>cloud / local"]
+    engine --> connect["Connect<br/>API key or model download"]
+    connect --> perms["Permissions<br/>(macOS only)"]
+    perms --> voice["Hotkey & Voice<br/>PTT/toggle · key capture · mic test"]
+    voice --> done["All set ✓"]
+    connect -. "Windows skips Permissions" .-> voice
+```
+
+---
+
+## 📦 Install (clone-first)
+
+Yapper installs from source with [**uv**](https://docs.astral.sh/uv/). No Python install dance, no embedded runtime.
+
+**Prerequisite:** install `uv` once —
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+```powershell
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+### macOS (Apple Silicon)
+```bash
+git clone https://github.com/Cloudelipute/yapper.git
+cd yapper
+./setup          # uv sync — creates .venv, installs deps (+ macOS pyobjc helpers)
+./run.command    # or ./run.sh
+```
 
 ### Windows
-
-```batch
-git clone https://github.com/romiteld/yapper.git
+```bat
+git clone https://github.com/Cloudelipute/yapper.git
 cd yapper
-INSTALL.bat
-Settings.bat
-Yapper.bat
+setup.bat
+run.bat
 ```
 
-### macOS
-
+### Linux (best-effort)
 ```bash
-git clone https://github.com/romiteld/yapper.git
+git clone https://github.com/Cloudelipute/yapper.git
 cd yapper
-./install.sh
-./run.sh settings
+./setup
 ./run.sh
 ```
+> Linux is best-effort: global hotkeys need X/uinput and tray support varies by desktop. Not a release target.
 
-### Linux
+### On-device transcription (optional)
+```bash
+uv sync --extra local   # mlx-whisper on macOS arm64, faster-whisper on Windows/Linux
+```
+
+### Prebuilt releases (unsigned)
+Unsigned `.app`/`.dmg` (macOS) and `.zip` (Windows) are attached to GitHub Releases as a convenience.
+On macOS Sequoia/Tahoe, clear the quarantine flag on first launch:
+```bash
+xattr -dr com.apple.quarantine /Applications/Yapper.app
+```
+(or System Settings → Privacy & Security → **Open Anyway**). Notifications may be unavailable on the unsigned build — the HUD covers all feedback.
+
+---
+
+## 🔐 Permissions (macOS)
+
+macOS only re-reads permissions **at process start** — after granting anything, **quit & relaunch Yapper**.
+
+| Permission | Why | How |
+|---|---|---|
+| 🎤 **Microphone** | Record your voice | OS prompts on first capture |
+| ♿ **Accessibility** | Paste / type at the cursor | System Settings → Privacy & Security → Accessibility → enable Yapper |
+| ⌨️ **Input Monitoring** | Capture the push-to-talk hotkey | System Settings → Privacy & Security → Input Monitoring → enable Yapper |
+
+Grant these to the **Yapper app's identity** (the `.app`, or your terminal/Python when running from source). Without Accessibility, key injection **fails silently** — the first-run wizard detects and guides you through it.
+
+Windows and Linux require no special TCC grants (Windows hotkeys may need an elevated terminal in some configurations).
+
+---
+
+## 🤖 Models & cost
+
+| Role | Default | Alternative | Notes |
+|---|---|---|---|
+| Cloud STT | `gpt-4o-mini-transcribe` (~$0.003/min) | `whisper-1` | mini is ~50% cheaper & more accurate; whisper-1 kept for long-tail langs / timestamps |
+| On-device STT | `mlx-whisper` (mac) / `faster-whisper` (win) | size selectable (`base`…) | runs offline; install via `--extra local` |
+| Text cleanup / translate | `gpt-5-nano` (`reasoning_effort='minimal'`) | `gpt-5.4-nano` | `gpt-4.1-nano` is **deprecated** (shuts down 2026-10-23) |
+
+A few minutes of dictation per day on the cloud default costs cents. On-device is free after download.
+
+---
+
+## 🔑 BYOK & privacy
+
+Yapper is **bring-your-own-key**. You paste your own OpenAI API key during onboarding; it is stored locally in `app/settings.json` (gitignored) and used only to call OpenAI directly from your machine.
+
+- **No telemetry.** Yapper phones home to nothing.
+- **No middleman.** Audio and text go straight from your machine to the API you chose.
+- **Local-only option.** With `--extra local`, transcription never leaves your device.
+- **Your key, gitignored.** `app/settings.json` is never committed.
+
+---
+
+## 🛠️ Development
 
 ```bash
-git clone https://github.com/romiteld/yapper.git
-cd yapper
-./install.sh
-./run.sh settings
-sudo ./run.sh  # Requires root for global hotkeys
+uv sync --extra dev     # pytest, pytest-qt, pyinstaller
+uv run pytest           # run the test suite
+uv run python -m app    # run from source
 ```
 
 ---
 
-## Usage
+<div align="center">
 
-### Voice Commands (Tray Mode)
-- **"Yapper start"** - Begin recording
-- **"Yapper stop"** - Stop and transcribe
+`© 2026 Cloudelipute` · Released under the [MIT License](LICENSE).
 
-### Hotkey (Default: F8)
-1. Click where you want the text
-2. Press F8 to start recording
-3. Speak clearly
-4. Press F8 to stop and transcribe
-
-### System Tray Menu
-Right-click the tray icon to:
-- Change output language
-- Toggle grammar correction
-- Toggle voice activity detection
-- Open settings
-
----
-
-## Building Portable Version
-
-To create a distributable portable package:
-
-1. On Windows, run:
-   ```
-   BUILD_PORTABLE.bat
-   ```
-
-2. Find the zip in the `dist/` folder
-
-3. Share the zip - users just extract and run!
-
----
-
-## Configuration
-
-Settings are stored in `app/settings.json`:
-
-| Setting | Description |
-|---------|-------------|
-| `api_key` | Your OpenAI API key |
-| `hotkey` | Recording hotkey (f8, f9, f10, etc.) |
-| `translate_to` | Output language code (es, fr, de, etc.) |
-| `fix_grammar` | Auto-correct grammar (true/false) |
-| `vad_enabled` | Voice activity detection (true/false) |
-| `wake_word_fuzzy` | Fuzzy wake word matching (true/false) |
-
----
-
-## Requirements
-
-- OpenAI API key
-- Python 3.8+ (not needed for portable version)
-- Microphone
-
-### Dependencies
-- openai
-- keyboard
-- pyaudio
-- pystray
-- Pillow
-- customtkinter
-
----
-
-## Troubleshooting
-
-### PyAudio Installation Issues
-
-**Windows:**
-```
-pip install pipwin
-pipwin install pyaudio
-```
-
-**macOS:**
-```
-brew install portaudio
-pip install pyaudio
-```
-
-**Linux:**
-```
-sudo apt install python3-pyaudio portaudio19-dev
-```
-
-### Hotkey Not Working (Linux)
-Run with sudo: `sudo -E ./run.sh`
-
-### No Microphone Detected
-Check Settings to select a specific microphone device.
-
----
-
-## Project Structure
-
-```
-yapper/
-├── app/
-│   ├── core/           # Shared modules
-│   │   ├── api.py      # OpenAI client with retry
-│   │   ├── audio.py    # Audio recording
-│   │   ├── vad.py      # Voice activity detection
-│   │   └── ...
-│   ├── yapper.py       # Console mode
-│   ├── yapper_tray.py  # System tray mode
-│   └── settings_ui.py  # GUI settings
-├── Yapper.bat          # Windows launcher
-├── run.sh              # macOS/Linux launcher
-└── BUILD_PORTABLE.bat  # Create portable distribution
-```
-
----
-
-## License
-
-© 2026 Cloudelipute
-
----
-
-## Support
-
-- Issues: https://github.com/romiteld/yapper/issues
-- API Keys: https://platform.openai.com/api-keys
+</div>
