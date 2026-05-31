@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🎙️ Yapper
+<img src="yapper_icon.png" alt="Yapper" width="128">
+
+# Yapper
 
 **Push-to-talk dictation that types what you actually said — for prompting AI agents, writing docs, or just messaging.**
 
@@ -13,26 +15,26 @@ Cross-platform: **macOS (Apple Silicon)** and **Windows**, one codebase.
 
 ---
 
-## ✨ Features
+## Features
 
 | | |
 |---|---|
-| 🎯 **Push-to-talk** | Hold a key to dictate. Toggle and wake-word modes too. |
-| 🎯 **Faithful, never reworded** | Types your *actual* words — wording, tone, slang **and** jargon/code kept **verbatim**, never paraphrased. Say "*um so like i'll be there in ten*" and it stays your sentence; say "*cube cuttle apply dash f deployment dot yaml*" and you get `kubectl apply -f deployment.yaml`. |
-| 🎚️ **Output modes** | **Clean** (default — faithful: fix only caps/punctuation + fillers, keep your words) · **Polished** (opt-in tidy rewrite) · **Verbatim** (raw, no AI). |
-| 🔤 **Spoken symbols** | "dash dash help" → `--help`, "dot py" → `.py`, "open paren" → `(`. |
-| 📚 **Vocabulary** | Teach it your terms: "cube cuttle" → `kubectl`, "next J S" → `Next.js`. CSV import. |
-| ☁️ **Cloud or 🖥️ on-device** | Default cloud `gpt-4o-mini-transcribe`; optional local `mlx-whisper`/`faster-whisper`. |
-| 🪟 **Recording HUD** | Frameless always-on-top pill with live waveform and idle→listening→transcribing→done states. |
-| ⌨️ **Unicode-safe paste** | Clipboard-paste primary (⌘/Ctrl+V), `pynput` type fallback — emoji & CJK safe. |
-| 🔔 **Native notifications** | Cross-platform toasts; HUD is the always-on fallback. |
-| 🔑 **BYOK** | Your OpenAI key, your machine. No telemetry, no middleman. |
+| **Push-to-talk** | Hold a key to dictate. Toggle and wake-word modes too. |
+| **Faithful, never reworded** | Types your *actual* words — wording, tone, slang **and** jargon/code kept **verbatim**, never paraphrased. Say "*um so like i'll be there in ten*" and it stays your sentence; say "*cube cuttle apply dash f deployment dot yaml*" and you get `kubectl apply -f deployment.yaml`. |
+| **Output modes** | **Clean** (default — faithful: fix only caps/punctuation + fillers, keep your words) · **Polished** (opt-in tidy rewrite) · **Verbatim** (raw, no AI). |
+| **Spoken symbols** | "dash dash help" → `--help`, "dot py" → `.py`, "open paren" → `(`. |
+| **Vocabulary** | Teach it your terms: "cube cuttle" → `kubectl`, "next J S" → `Next.js`. CSV import. |
+| **Cloud or on-device** | Default cloud `gpt-4o-mini-transcribe`; optional local `mlx-whisper`/`faster-whisper`. |
+| **Recording HUD** | Frameless always-on-top pill with live waveform and idle→listening→transcribing→done states. |
+| **Unicode-safe paste** | Clipboard-paste primary (⌘/Ctrl+V), `pynput` type fallback — emoji & CJK safe. |
+| **Native notifications** | Cross-platform toasts; HUD is the always-on fallback. |
+| **BYOK** | Your OpenAI key, your machine. No telemetry, no middleman. |
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
-> 📐 **Full architecture drawings** — system overview, threading model, dictation sequence, engine abstraction, and the formatting pipeline — are in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+> **Full architecture drawings** — system overview, threading model, dictation sequence, engine abstraction, and the formatting pipeline — are in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 ```mermaid
 flowchart TB
@@ -43,7 +45,7 @@ flowchart TB
     UI -- "Qt signals/slots" --> CTRL
     subgraph CTRL["Controller (app orchestrator)"]
         direction LR
-        c["wires: hotkeys → record → engine → formatting → insert → HUD"]
+        c["wires: hotkeys -> record -> engine -> formatting -> insert -> HUD"]
     end
     CTRL --> hotkeys["hotkeys<br/>(pynput) PTT/toggle"]
     CTRL --> audio["audio<br/>(sounddevice + vad)"]
@@ -57,7 +59,7 @@ flowchart TB
     class perms,api plat;
 ```
 
-## 🔄 Dictation lifecycle
+## Dictation lifecycle
 
 ```mermaid
 flowchart TD
@@ -65,15 +67,15 @@ flowchart TD
     listen --> record["record (sounddevice, 16 kHz mono)"]
     record -->|"key up / stop"| vad{"VAD: speech?"}
     vad -->|"silent"| idle
-    vad -->|"speech"| bias["vocabulary → Whisper prompt bias"]
+    vad -->|"speech"| bias["vocabulary -> Whisper prompt bias"]
     bias --> stt["Engine.transcribe()<br/>cloud gpt-4o-mini-transcribe<br/>or local mlx / faster-whisper"]
-    stt --> fmt["Formatting:<br/>strip wake words → expand spoken symbols →<br/>canonical vocab correction → mode cleanup<br/>(clean / polished / verbatim) →<br/>optional translate (gpt-5-nano)"]
-    fmt --> paste["Typer: clipboard-paste at cursor (⌘/Ctrl+V)"]
-    paste --> done["HUD: done ✓ · sound cue · history.add() · notify"]
+    stt --> fmt["Formatting:<br/>strip wake words -> expand spoken symbols -><br/>canonical vocab correction -> mode cleanup<br/>(clean / polished / verbatim) -><br/>optional translate (gpt-5-nano)"]
+    fmt --> paste["Typer: clipboard-paste at cursor (Cmd/Ctrl+V)"]
+    paste --> done["HUD: done · sound cue · history.add() · notify"]
     done --> idle
 ```
 
-## 🚀 Onboarding flow
+## Onboarding flow
 
 ```mermaid
 flowchart LR
@@ -81,13 +83,13 @@ flowchart LR
     engine --> connect["Connect<br/>API key or model download"]
     connect --> perms["Permissions<br/>(macOS only)"]
     perms --> voice["Hotkey & Voice<br/>PTT/toggle · key capture · mic test"]
-    voice --> done["All set ✓"]
+    voice --> done["All set"]
     connect -. "Windows skips Permissions" .-> voice
 ```
 
 ---
 
-## 📦 Install (clone-first)
+## Install (clone-first)
 
 Yapper installs from source with [**uv**](https://docs.astral.sh/uv/). No Python install dance, no embedded runtime.
 
@@ -142,27 +144,27 @@ xattr -dr com.apple.quarantine /Applications/Yapper.app
 
 ---
 
-## 🕹️ Using it
+## Using it
 
-- **Dictate:** hold your hotkey (push‑to‑talk), speak, release — the text is pasted at your cursor. Toggle and wake‑word activation are selectable too.
-- **Menu‑bar / tray:** quick‑toggle the **engine** (cloud/local), **output mode** (Clean/Polished/Verbatim), and **language** inline; open **Settings** or **History**; quit.
+- **Dictate:** hold your hotkey (push-to-talk), speak, release — the text is pasted at your cursor. Toggle and wake-word activation are selectable too.
+- **Menu-bar / tray:** quick-toggle the **engine** (cloud/local), **output mode** (Clean/Polished/Verbatim), and **language** inline; open **Settings** or **History**; quit.
 - **Settings** (sidebar): General · Engine & Models · **Vocabulary** (teach it your terms) · **Formatting** (mode + spoken symbols) · Hotkeys · Audio · History · About. Edits apply on **Save**.
-- **History:** search past dictations, copy, re‑insert, **reprocess** with current settings, clear, or export.
+- **History:** search past dictations, copy, re-insert, **reprocess** with current settings, clear, or export.
 - **Scripted / no GUI:** `uv run python -m app --once` does a single record→type; `--seconds N` sets the recording window.
 
-📐 See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for the full architecture drawings (system overview, threading model, dictation sequence, engine abstraction, formatting pipeline, and the UI‑surface map).
+See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for the full architecture drawings (system overview, threading model, dictation sequence, engine abstraction, formatting pipeline, and the UI-surface map).
 
 ---
 
-## 🔐 Permissions (macOS)
+## Permissions (macOS)
 
 macOS only re-reads permissions **at process start** — after granting anything, **quit & relaunch Yapper**.
 
 | Permission | Why | How |
 |---|---|---|
-| 🎤 **Microphone** | Record your voice | OS prompts on first capture |
-| ♿ **Accessibility** | Paste / type at the cursor | System Settings → Privacy & Security → Accessibility → enable Yapper |
-| ⌨️ **Input Monitoring** | Capture the push-to-talk hotkey | System Settings → Privacy & Security → Input Monitoring → enable Yapper |
+| **Microphone** | Record your voice | OS prompts on first capture |
+| **Accessibility** | Paste / type at the cursor | System Settings → Privacy & Security → Accessibility → enable Yapper |
+| **Input Monitoring** | Capture the push-to-talk hotkey | System Settings → Privacy & Security → Input Monitoring → enable Yapper |
 
 Grant these to the **Yapper app's identity** (the `.app`, or your terminal/Python when running from source). Without Accessibility, key injection **fails silently** — the first-run wizard detects and guides you through it.
 
@@ -170,7 +172,7 @@ Windows and Linux require no special TCC grants (Windows hotkeys may need an ele
 
 ---
 
-## 🤖 Models & cost
+## Models & cost
 
 | Role | Default | Alternative | Notes |
 |---|---|---|---|
@@ -184,7 +186,7 @@ A few minutes of dictation per day on the cloud default costs cents. On-device i
 
 ---
 
-## 🔑 BYOK & privacy
+## BYOK & privacy
 
 Yapper is **bring-your-own-key**. You paste your own OpenAI API key during onboarding; it is stored locally in `app/settings.json` (gitignored) and used only to call OpenAI directly from your machine.
 
@@ -195,7 +197,7 @@ Yapper is **bring-your-own-key**. You paste your own OpenAI API key during onboa
 
 ---
 
-## 🛠️ Development
+## Development
 
 ```bash
 uv sync --extra dev     # pytest, pytest-qt, pyinstaller
