@@ -160,6 +160,7 @@ class AudioRecorder:
                 return None
             frames_copy = self._frames.copy()
 
+        temp_path = None
         try:
             tmp = tempfile.NamedTemporaryFile(
                 suffix=".wav", delete=False, prefix="yapper_")
@@ -173,8 +174,14 @@ class AudioRecorder:
             logger.info("Recording stopped. Duration: %.1fs, File: %s",
                         self.duration_seconds, temp_path)
             return temp_path
-        except (IOError, OSError) as e:
+        except Exception as e:  # wave.Error / struct.error / MemoryError / OSError
             logger.error("Failed to save audio file: %s", e)
+            if temp_path is not None:
+                try:
+                    import os as _os
+                    _os.unlink(temp_path)
+                except OSError:
+                    pass
             return None
 
     def _close_stream(self) -> None:

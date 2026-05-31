@@ -237,7 +237,18 @@ class Settings:
                 # Try type coercion for common cases
                 try:
                     if expected_type == bool:
-                        value = bool(value)
+                        if isinstance(value, bool):
+                            pass  # already bool — handled by isinstance above
+                        elif isinstance(value, str):
+                            low = value.strip().lower()
+                            if low in ("true", "1", "yes", "on"):
+                                value = True
+                            elif low in ("false", "0", "no", "off"):
+                                value = False
+                            else:
+                                return None  # unrecognized -> reject, default used
+                        else:
+                            value = bool(value)  # ints/other: 0/1 semantics fine
                     elif expected_type == int:
                         value = int(value)
                     elif expected_type == str:

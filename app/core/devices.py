@@ -101,16 +101,19 @@ def get_default_device() -> Optional[AudioDevice]:
 
 
 def test_device(device_index: int, duration: float = 0.5) -> bool:
-    """Test if a device can record audio.
+    """Test if a device can record audio by actually reading frames.
+
+    Opens an InputStream, reads frames for ``duration`` seconds, and returns
+    True only when audio data is delivered. A device that can be opened but
+    yields no frames (e.g. muted, permission-denied-but-silent) returns False.
 
     Args:
         device_index: Device index to test.
         duration: Test duration in seconds.
 
     Returns:
-        True if device works, False otherwise.
+        True if device delivers audio frames, False otherwise.
     """
-    import time
     sd = _load_sounddevice()
     if sd is None:
         return False
@@ -123,9 +126,13 @@ def test_device(device_index: int, duration: float = 0.5) -> bool:
             device=device_index,
         )
         stream.start()
-        time.sleep(duration)
-        logger.debug("Device %d test passed", device_index)
-        return True
+        frames_to_read = max(1, int(16000 * duration))
+        data, _overflowed = stream.read(frames_to_read)
+        if len(data) > 0:
+            logger.debug("Device %d test passed (%d frames)", device_index, len(data))
+            return True
+        logger.warning("Device %d returned no audio frames", device_index)
+        return False
     except Exception as e:
         logger.warning("Device %d test failed: %s", device_index, e)
         return False

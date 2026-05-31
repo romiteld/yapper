@@ -78,6 +78,9 @@ class Vocabulary:
         strings. Aliases are distinctive mis-hear phrases used by ``correct``;
         ``None`` means the term contributes to Whisper bias only.
         """
+        if not isinstance(typed, str):
+            logger.warning("Skipping vocabulary term with non-string 'typed': %r", typed)
+            return
         typed = typed.strip()
         if not typed:
             return
@@ -149,9 +152,14 @@ class Vocabulary:
                     if not row:
                         continue
                     cells = [c.strip() for c in row]
-                    # Skip a header row.
-                    if cells[0].lower() == "said" or (
-                        len(cells) > 1 and cells[1].lower() == "typed"
+                    # Skip the header row only when BOTH expected column names
+                    # appear together (first cell == "said" AND second == "typed").
+                    # Using OR here silently drops legitimate data rows whose
+                    # first cell is "said" or second cell is "typed".
+                    if (
+                        len(cells) > 1
+                        and cells[0].lower() == "said"
+                        and cells[1].lower() == "typed"
                     ):
                         continue
                     if len(cells) == 1:

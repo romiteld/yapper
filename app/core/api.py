@@ -217,7 +217,14 @@ class APIClient:
                 messages=messages,
                 reasoning_effort=reasoning_effort,
             )
-            return response.choices[0].message.content.strip()
+            msg = response.choices[0].message
+            content = msg.content
+            if not content:
+                finish = response.choices[0].finish_reason
+                if finish in ("length", "content_filter"):
+                    logger.warning(
+                        "Chat response truncated/filtered (finish_reason=%s)", finish)
+            return content.strip() if content else ""
 
         logger.debug(f"Chat request ({model}) with {len(messages)} messages")
         return self._with_retry(_do_chat, "Chat")

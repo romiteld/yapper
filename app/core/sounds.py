@@ -143,17 +143,21 @@ class SoundPlayer:
 
             else:  # Linux
                 import subprocess
-                # Try different audio players
+                # Try different audio players; advance to the next on any failure.
                 for player in ["paplay", "aplay", "play"]:
                     try:
                         subprocess.run(
                             [player, str(wav_path)],
                             capture_output=True,
-                            timeout=5
+                            timeout=5,
+                            check=True,
                         )
-                        break
+                        break  # success
                     except FileNotFoundError:
-                        continue
+                        continue  # player not installed
+                    except subprocess.SubprocessError:
+                        # CalledProcessError (non-zero exit) or TimeoutExpired
+                        continue  # this player failed/hung, try the next
 
         except Exception as e:
             logger.debug(f"WAV playback failed: {e}")

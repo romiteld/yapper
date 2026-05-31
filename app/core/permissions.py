@@ -83,32 +83,60 @@ def accessibility_trusted() -> bool:
 
 
 def input_monitoring_ok() -> bool:
-    """True if the process may observe global key events (mac Input Monitoring)."""
+    """True if the process may observe global key events (mac Input Monitoring).
+
+    On macOS, pynput's Quartz event tap is gated by AXIsProcessTrusted
+    (Accessibility), so we probe that directly instead of reading the stale
+    class-level ``IS_TRUSTED`` attribute (which is always False until a Listener
+    instance has started its thread).
+    """
     if not IS_MAC:
         return True
-    listener_cls = _keyboard_listener_cls()
-    if listener_cls is None:
+    hi = _load_hiservices()
+    if hi is None:
         return False
     try:
-        return bool(getattr(listener_cls, "IS_TRUSTED", True))
+        return bool(hi.AXIsProcessTrusted())
     except Exception as e:
-        logger.error("Listener.IS_TRUSTED check failed: %s", e)
+        logger.error("AXIsProcessTrusted failed: %s", e)
         return False
 
 
-def microphone_ok() -> bool:
-    """True if an input stream can be opened (mac Microphone)."""
-    if not IS_MAC:
-        return True
+def _probe_input_stream() -> bool:
+    """Probe the mic by actually opening an input stream (exercises TCC gate)."""
     sd = _load_sounddevice()
     if sd is None:
         return False
     try:
-        sd.check_input_settings()
+        with sd.InputStream(channels=1, dtype="int16"):
+            pass
         return True
     except Exception as e:
-        logger.warning("Microphone probe failed: %s", e)
+        logger.warning("Microphone stream probe failed: %s", e)
         return False
+
+
+def microphone_ok() -> bool:
+    """True if the mac Microphone permission is granted (TCC).
+
+    check_input_settings() only probes format support (Pa_IsFormatSupported),
+    which succeeds even when the TCC mic permission is denied. We use
+    AVFoundation.AVCaptureDevice.authorizationStatus as the primary probe,
+    falling back to opening a real InputStream so the TCC gate is exercised.
+    """
+    if not IS_MAC:
+        return True
+    try:
+        from AVFoundation import (  # type: ignore
+            AVCaptureDevice,
+            AVMediaTypeAudio,
+        )
+        # 0=notDetermined, 1=restricted, 2=denied, 3=authorized
+        status = AVCaptureDevice.authorizationStatusForMediaType_(AVMediaTypeAudio)
+        return int(status) == 3
+    except Exception as e:
+        logger.debug("AVCaptureDevice mic auth check unavailable: %s", e)
+        return _probe_input_stream()
 
 
 def permission_status() -> PermissionStatus:

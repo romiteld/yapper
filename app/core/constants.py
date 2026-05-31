@@ -207,7 +207,7 @@ SETTINGS_SCHEMA: Dict[str, tuple] = {
         lambda x: isinstance(x, list)
         and all(
             isinstance(t, str)
-            or (isinstance(t, dict) and "typed" in t)
+            or (isinstance(t, dict) and isinstance(t.get("typed"), str))
             for t in x
         ),
         "Custom vocabulary terms",

@@ -117,9 +117,11 @@ class TextTyper:
             controller = keyboard.Controller()
             modifier = keyboard.Key.cmd if IS_MAC else keyboard.Key.ctrl
             controller.press(modifier)
-            controller.press("v")
-            controller.release("v")
-            controller.release(modifier)
+            try:
+                controller.press("v")
+                controller.release("v")
+            finally:
+                controller.release(modifier)
         except Exception as e:
             logger.error("Paste keystroke failed: %s", e)
             return False

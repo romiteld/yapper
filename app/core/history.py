@@ -7,6 +7,7 @@ Logging and retrieval of transcription records.
 """
 
 import json
+import threading
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
@@ -104,36 +105,40 @@ class TranscriptionHistory:
         self._history_file = history_dir / self.HISTORY_FILENAME
         self._records: List[TranscriptionRecord] = []
         self._loaded = False
+        # RLock so methods that call other locked methods (e.g. add -> _save)
+        # don't deadlock, and so concurrent add()/clear()/_save() are serialised.
+        self._lock = threading.RLock()
 
     def _ensure_loaded(self) -> None:
         """Load history from file if not already loaded."""
-        if self._loaded:
-            return
+        with self._lock:
+            if self._loaded:
+                return
 
-        self._loaded = True
+            self._loaded = True
 
-        if not self._history_file.exists():
-            logger.debug("No history file found, starting fresh")
-            return
+            if not self._history_file.exists():
+                logger.debug("No history file found, starting fresh")
+                return
 
-        try:
-            with open(self._history_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
+            try:
+                with open(self._history_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
 
-            if isinstance(data, list):
-                for item in data:
-                    try:
-                        record = TranscriptionRecord(**item)
-                        self._records.append(record)
-                    except (TypeError, KeyError) as e:
-                        logger.warning(f"Skipping invalid record: {e}")
+                if isinstance(data, list):
+                    for item in data:
+                        try:
+                            record = TranscriptionRecord(**item)
+                            self._records.append(record)
+                        except (TypeError, KeyError) as e:
+                            logger.warning(f"Skipping invalid record: {e}")
 
-            logger.debug(f"Loaded {len(self._records)} history records")
+                logger.debug(f"Loaded {len(self._records)} history records")
 
-        except json.JSONDecodeError as e:
-            logger.error(f"Invalid history JSON: {e}")
-        except IOError as e:
-            logger.error(f"Could not read history file: {e}")
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid history JSON: {e}")
+            except IOError as e:
+                logger.error(f"Could not read history file: {e}")
 
     def add(self, record: TranscriptionRecord) -> bool:
         """
@@ -148,15 +153,16 @@ class TranscriptionHistory:
         if not self.enabled:
             return False
 
-        self._ensure_loaded()
-        self._records.append(record)
+        with self._lock:
+            self._ensure_loaded()
+            self._records.append(record)
 
-        # Trim old records if exceeding max
-        if len(self._records) > self.max_records:
-            self._records = self._records[-self.max_records:]
+            # Trim old records if exceeding max
+            if len(self._records) > self.max_records:
+                self._records = self._records[-self.max_records:]
 
-        # Save to file
-        return self._save()
+            # Save to file
+            return self._save()
 
     def get_recent(self, count: int = 10) -> List[TranscriptionRecord]:
         """
@@ -168,8 +174,11 @@ class TranscriptionHistory:
         Returns:
             List of TranscriptionRecord objects (newest first).
         """
-        self._ensure_loaded()
-        return list(reversed(self._records[-count:]))
+        with self._lock:
+            self._ensure_loaded()
+            if count <= 0:
+                return []
+            return list(reversed(self._records[-count:]))
 
     def get_all(self) -> List[TranscriptionRecord]:
         """
@@ -178,8 +187,9 @@ class TranscriptionHistory:
         Returns:
             List of all TranscriptionRecord objects (oldest first).
         """
-        self._ensure_loaded()
-        return self._records.copy()
+        with self._lock:
+            self._ensure_loaded()
+            return self._records.copy()
 
     def get_by_date(self, date: datetime) -> List[TranscriptionRecord]:
         """
@@ -191,13 +201,13 @@ class TranscriptionHistory:
         Returns:
             List of records from that date.
         """
-        self._ensure_loaded()
-        date_str = date.strftime("%Y-%m-%d")
-
-        return [
-            r for r in self._records
-            if r.timestamp.startswith(date_str)
-        ]
+        with self._lock:
+            self._ensure_loaded()
+            date_str = date.strftime("%Y-%m-%d")
+            return [
+                r for r in self._records
+                if r.timestamp.startswith(date_str)
+            ]
 
     def clear(self) -> bool:
         """
@@ -206,9 +216,10 @@ class TranscriptionHistory:
         Returns:
             True if cleared successfully.
         """
-        self._records = []
-        self._loaded = True
-        return self._save()
+        with self._lock:
+            self._records = []
+            self._loaded = True
+            return self._save()
 
     def get_stats(self) -> dict:
         """
@@ -217,27 +228,28 @@ class TranscriptionHistory:
         Returns:
             Dictionary with stats.
         """
-        self._ensure_loaded()
+        with self._lock:
+            self._ensure_loaded()
 
-        if not self._records:
+            if not self._records:
+                return {
+                    "total_records": 0,
+                    "total_duration": 0,
+                    "total_characters": 0,
+                    "translations": 0,
+                    "grammar_fixes": 0,
+                }
+
             return {
-                "total_records": 0,
-                "total_duration": 0,
-                "total_characters": 0,
-                "translations": 0,
-                "grammar_fixes": 0,
+                "total_records": len(self._records),
+                "total_duration": sum(r.duration_seconds for r in self._records),
+                "total_characters": sum(r.character_count for r in self._records),
+                "translations": sum(1 for r in self._records if r.was_translated),
+                "grammar_fixes": sum(1 for r in self._records if r.was_grammar_fixed),
             }
 
-        return {
-            "total_records": len(self._records),
-            "total_duration": sum(r.duration_seconds for r in self._records),
-            "total_characters": sum(r.character_count for r in self._records),
-            "translations": sum(1 for r in self._records if r.was_translated),
-            "grammar_fixes": sum(1 for r in self._records if r.was_grammar_fixed),
-        }
-
     def _save(self) -> bool:
-        """Save history to file."""
+        """Save history to file. Must be called with self._lock held."""
         try:
             self._history_dir.mkdir(parents=True, exist_ok=True)
 

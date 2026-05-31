@@ -164,15 +164,24 @@ class HotkeyManager:
             return
         self.mode = mode
         with self._lock:
+            was_active = self._active
             self._active = False
+        if was_active:
+            # Deliver the stop edge so the controller exits LISTENING state.
+            self._safe(self._on_stop)
         logger.debug("Hotkey mode set to %s", mode)
 
     def set_hotkey(self, hotkey: str) -> None:
         self.hotkey = hotkey
         self._required_modifiers, self._target_key = self._parse_hotkey(hotkey)
         with self._lock:
+            was_active = self._active
             self._active = False
             self._held_modifiers.clear()
+        if was_active:
+            # Deliver the stop edge so the controller exits LISTENING state.
+            # (set_mode already cleared _active if it ran first, so no double-stop.)
+            self._safe(self._on_stop)
         logger.debug("Hotkey set to %s", hotkey)
 
     # --- key matching -------------------------------------------------------
