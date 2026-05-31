@@ -32,6 +32,8 @@ Cross-platform: **macOS (Apple Silicon)** and **Windows**, one codebase.
 
 ## 🏗️ Architecture
 
+> 📐 **Full architecture drawings** — system overview, threading model, dictation sequence, engine abstraction, and the formatting pipeline — are in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+
 ```mermaid
 flowchart TB
     subgraph UI["UI layer — PySide6 / Qt (one event loop)"]
