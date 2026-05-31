@@ -102,7 +102,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 
 ### macOS (Apple Silicon)
 ```bash
-git clone https://github.com/Cloudelipute/yapper.git
+git clone https://github.com/romiteld/yapper.git
 cd yapper
 ./setup          # uv sync — creates .venv, installs deps (+ macOS pyobjc helpers)
 ./run.command    # or ./run.sh
@@ -110,7 +110,7 @@ cd yapper
 
 ### Windows
 ```bat
-git clone https://github.com/Cloudelipute/yapper.git
+git clone https://github.com/romiteld/yapper.git
 cd yapper
 setup.bat
 run.bat
@@ -118,7 +118,7 @@ run.bat
 
 ### Linux (best-effort)
 ```bash
-git clone https://github.com/Cloudelipute/yapper.git
+git clone https://github.com/romiteld/yapper.git
 cd yapper
 ./setup
 ./run.sh

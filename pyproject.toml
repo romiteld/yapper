@@ -50,9 +50,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Cloudelipute/yapper"
-Repository = "https://github.com/Cloudelipute/yapper"
-Issues = "https://github.com/Cloudelipute/yapper/issues"
+Homepage = "https://github.com/romiteld/yapper"
+Repository = "https://github.com/romiteld/yapper"
+Issues = "https://github.com/romiteld/yapper/issues"
 
 [project.scripts]
 yapper = "app.__main__:main"
