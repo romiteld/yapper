@@ -39,3 +39,6 @@ python/
 
 # Claude
 .claude/
+
+# Brainstorming visual companion
+.superpowers/
