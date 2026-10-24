@@ -1,6 +1,6 @@
 <div align="center">
 
-# Yapper — Architecture
+# Yapper - Architecture
 
 Cross‑platform push‑to‑talk dictation. One codebase runs on macOS (Apple Silicon) and Windows.
 PySide6/Qt owns a single event loop; platform differences are isolated behind thin abstractions.
@@ -43,7 +43,7 @@ flowchart TB
     subgraph PLAT["Platform + external"]
         direction LR
         perms["permissions<br/>macOS TCC"]
-        api["api · OpenAI 2.x"]
+        api["api · ElevenLabs Scribe"]
         local["local Whisper<br/>mlx / faster-whisper"]
         os["OS: mic · clipboard · keys · tray"]
     end
@@ -90,7 +90,7 @@ flowchart LR
 ```
 
 **Rules enforced in code**
-- Hotkey callbacks (background thread) only `emit()` signals — never call Controller/Qt directly.
+- Hotkey callbacks (background thread) only `emit()` signals - never call Controller/Qt directly.
 - Recording + the network/transcription call run on a worker thread, so the GUI never blocks.
 - Widget mutation happens only on the GUI thread, driven by queued signals.
 
@@ -119,7 +119,7 @@ sequenceDiagram
     User->>HK: release hotkey
     HK-->>C: hotkey_stop (signal)
     C->>W: stop recording
-    W->>W: VAD — speech present?
+    W->>W: VAD - speech present?
     alt silence
         W-->>HUD: state = idle
     else speech
@@ -157,7 +157,7 @@ classDiagram
         +transcribe() str
     }
     class APIClient {
-        +transcribe(model=gpt-4o-mini-transcribe, prompt=)
+        +transcribe(model=scribe_v2, prompt=)
         +chat(model=gpt-5-nano, reasoning_effort=minimal)
     }
     TranscriptionEngine <|-- CloudEngine
@@ -173,7 +173,7 @@ classDiagram
 
 ## 5. The faithful formatting pipeline
 
-The product promise: type what you actually said — your wording, voice, and slang **and** any jargon/code — and never reword it. Cleanup fixes only mechanics.
+The product promise: type what you actually said - your wording, voice, and slang **and** any jargon/code - and never reword it. Cleanup fixes only mechanics.
 
 ```mermaid
 flowchart LR
@@ -192,7 +192,7 @@ flowchart LR
     t --> out
 ```
 
-Deterministic stages (symbols, vocabulary) are tuned so casual speech passes through **unchanged** — e.g. "i use pnpm instead of npm" and "the dot product" are never rewritten — while CLI/code dictation still converts.
+Deterministic stages (symbols, vocabulary) are tuned so casual speech passes through **unchanged** - e.g. "i use pnpm instead of npm" and "the dot product" are never rewritten - while CLI/code dictation still converts.
 
 ---
 
@@ -249,7 +249,7 @@ app/
 │   ├── formatting.py      # Clean/Polished/Verbatim + spoken symbols
 │   ├── vocabulary.py      # Whisper bias + fuzzy mis-hear correction
 │   ├── transcriber.py     # orchestrates engine + formatter
-│   ├── api.py             # OpenAI 2.x client (retry)
+│   ├── api.py             # ElevenLabs Scribe client (retry)
 │   ├── config.py/constants.py
 │   └── sounds.py · history.py · logger.py
 └── ui/                    # PySide6
@@ -268,7 +268,7 @@ app/
 
 - **One Qt event loop** (PySide6) for tray + HUD + wizard + settings, avoiding the macOS main‑thread contention that a separate tray library would create.
 - **`pynput`** for both global hotkey capture **and** keystroke/paste injection, cross‑platform (replaced the Windows‑only `keyboard`).
-- **Clipboard‑paste insertion** (⌘/Ctrl+V) as the primary path — Unicode/emoji/CJK‑safe — with `pynput` typing as a fallback.
+- **Clipboard‑paste insertion** (⌘/Ctrl+V) as the primary path - Unicode/emoji/CJK‑safe - with `pynput` typing as a fallback.
 - **`sounddevice`** for audio (bundles PortAudio in its wheels, removing the macOS PyAudio build problem).
 - **Engine interface** so cloud and on‑device transcription are interchangeable; cloud default keeps the base install light.
 - **Faithful formatting** with deterministic, conservative text transforms plus a strict no‑paraphrase LLM prompt.
@@ -280,6 +280,6 @@ app/
 |---|---|---|
 | Hotkeys / typing | needs Accessibility + Input Monitoring (detected, guided; fails silently otherwise) | works without special grants |
 | Microphone | `NSMicrophoneUsageDescription` prompt | OS prompt |
-| Notifications | Notification Center (signed builds) — HUD is the always‑on fallback | WinRT toasts |
+| Notifications | Notification Center (signed builds) - HUD is the always‑on fallback | WinRT toasts |
 | Tray | `QSystemTrayIcon` | `QSystemTrayIcon` |
 | First launch (unsigned) | `xattr -dr com.apple.quarantine` or Open Anyway | run normally |

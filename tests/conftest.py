@@ -48,28 +48,32 @@ def temp_settings(tmp_path):
 
 
 @pytest.fixture
-def mock_openai(monkeypatch):
-    """Patch `openai.OpenAI` so no network call happens.
+def mock_elevenlabs(monkeypatch):
+    """Patch ``httpx.Client`` so no network call happens during APIClient tests.
 
-    Returns the mock *client instance* (openai.OpenAI(...) return value).
-    Configure: mock_openai.audio.transcriptions.create.return_value = "..."
-               mock_openai.chat.completions.create.return_value = <obj>
+    Returns the mock *client instance* (httpx.Client(...) return value).
     """
-    client = MagicMock(name="OpenAIClient")
-    # Default transcription returns a plain string (response_format='text').
-    client.audio.transcriptions.create.return_value = "hello world"
+    client = MagicMock(name="ElevenLabsHttpClient")
 
-    # Default chat returns an object shaped like the SDK response.
+    post_resp = MagicMock()
+    post_resp.status_code = 200
+    post_resp.json.return_value = {"text": "hello world", "language_code": "en"}
+    post_resp.text = '{"text":"hello world"}'
+    client.post.return_value = post_resp
+
+    get_resp = MagicMock()
+    get_resp.status_code = 200
+    client.get.return_value = get_resp
+
     chat_resp = MagicMock()
     chat_resp.choices = [MagicMock()]
     chat_resp.choices[0].message.content = "cleaned text"
     client.chat.completions.create.return_value = chat_resp
 
-    factory = MagicMock(name="OpenAIFactory", return_value=client)
-    # `core.api` does `from openai import OpenAI` inside _get_client.
-    import openai
-    monkeypatch.setattr(openai, "OpenAI", factory)
-    client._factory = factory  # expose for assertions on constructor args
+    factory = MagicMock(name="HttpxClientFactory", return_value=client)
+    import httpx
+    monkeypatch.setattr(httpx, "Client", factory)
+    client._factory = factory
     return client
 
 

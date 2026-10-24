@@ -7,6 +7,7 @@ Unified settings loading, saving, and validation.
 """
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
@@ -81,6 +82,10 @@ class Settings:
             # Separate known and unknown keys
             for key, value in file_data.items():
                 if key in DEFAULT_SETTINGS:
+                    if key == "output_mode" and value in self._OUTPUT_MODE_RENAMES:
+                        value = self._OUTPUT_MODE_RENAMES[value]
+                    elif key == "cloud_stt_model" and value in self._STT_MODEL_RENAMES:
+                        value = self._STT_MODEL_RENAMES[value]
                     # Validate and set known settings
                     validated_value = self._validate_setting(key, value)
                     if validated_value is not None:
@@ -238,7 +243,7 @@ class Settings:
                 try:
                     if expected_type == bool:
                         if isinstance(value, bool):
-                            pass  # already bool — handled by isinstance above
+                            pass  # already bool - handled by isinstance above
                         elif isinstance(value, str):
                             low = value.strip().lower()
                             if low in ("true", "1", "yes", "on"):
@@ -287,6 +292,30 @@ class Settings:
                 "Migrated legacy output_mode '%s' -> '%s'", raw_mode, new_mode
             )
 
+        # Legacy cloud_stt_model names (gpt-4o-mini-transcribe / whisper-1)
+        # migrate to ElevenLabs scribe_v2.
+        raw_stt = file_data.get("cloud_stt_model")
+        if raw_stt in self._STT_MODEL_RENAMES:
+            new_stt = self._STT_MODEL_RENAMES[raw_stt]
+            self._data["cloud_stt_model"] = new_stt
+            logger.info(
+                "Migrated legacy cloud_stt_model '%s' -> '%s'", raw_stt, new_stt
+            )
+
+        # Migrate elevenlabs_api_key -> api_key and drop deprecated keys.
+        if "elevenlabs_api_key" in file_data:
+            el_key = file_data.get("elevenlabs_api_key")
+            if not self._data.get("api_key") and isinstance(el_key, str):
+                self._data["api_key"] = el_key
+            self._extra_data.pop("elevenlabs_api_key", None)
+
+        # Replace legacy sk-proj-* keys with ELEVENLABS_API_KEY env var (or clear).
+        current_key = self._data.get("api_key") or ""
+        if isinstance(current_key, str) and current_key.startswith("sk-proj-"):
+            env_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+            self._data["api_key"] = env_key
+            logger.info("Migrated legacy sk-proj-* API key entry")
+
     def _create_default_file(self) -> None:
         """Create default settings file."""
         self._data = DEFAULT_SETTINGS.copy()
@@ -297,6 +326,12 @@ class Settings:
     _OUTPUT_MODE_RENAMES = {
         "technical": "clean",
         "natural": "polished",
+    }
+
+    # Legacy cloud STT model names -> ElevenLabs Scribe v2.
+    _STT_MODEL_RENAMES = {
+        "gpt-4o-mini-transcribe": "scribe_v2",
+        "whisper-1": "scribe_v2",
     }
 
     def migrate(self) -> bool:
@@ -321,6 +356,16 @@ class Settings:
             self._data["output_mode"] = new_mode
             logger.info(
                 "Migrated legacy output_mode '%s' -> '%s'", current_mode, new_mode
+            )
+            changed = True
+
+        # Rename legacy cloud_stt_model values to scribe_v2.
+        current_stt = self._data.get("cloud_stt_model")
+        if current_stt in self._STT_MODEL_RENAMES:
+            new_stt = self._STT_MODEL_RENAMES[current_stt]
+            self._data["cloud_stt_model"] = new_stt
+            logger.info(
+                "Migrated legacy cloud_stt_model '%s' -> '%s'", current_stt, new_stt
             )
             changed = True
 

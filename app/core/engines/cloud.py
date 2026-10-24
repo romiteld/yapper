@@ -1,7 +1,7 @@
 """
-Cloud transcription engine (OpenAI).
-====================================
-Wraps APIClient; default model gpt-4o-mini-transcribe.
+Cloud transcription engine (ElevenLabs).
+========================================
+Wraps APIClient; default model scribe_v2.
 
 © 2026 Cloudelipute
 """
@@ -16,12 +16,12 @@ logger = get_logger("engines.cloud")
 
 
 class CloudEngine(TranscriptionEngine):
-    """OpenAI-backed speech-to-text engine."""
+    """ElevenLabs-backed speech-to-text engine."""
 
     def __init__(
         self,
         api_client: APIClient,
-        model: str = "gpt-4o-mini-transcribe",
+        model: str = "scribe_v2",
     ):
         self._api = api_client
         self._model = model

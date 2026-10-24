@@ -152,7 +152,7 @@ class SettingsWindow(QWidget):
             self._engine = self._combo(lay, "Engine", ["cloud", "local"], "engine")
             self._cloud_model = self._combo(
                 lay, "Cloud STT model",
-                ["gpt-4o-mini-transcribe", "whisper-1"], "cloud_stt_model")
+                ["scribe_v2", "scribe_v1"], "cloud_stt_model")
             self._text_model = self._combo(
                 lay, "Text model", ["gpt-5-nano", "gpt-5.4-nano"], "text_model")
         elif section == "Formatting":

@@ -1,12 +1,13 @@
-"""Phase 2: APIClient passes correct OpenAI 2.x models/params; retry preserved."""
-from core.api import APIClient
+"""Phase 2: APIClient passes correct ElevenLabs Scribe models/params; retry preserved."""
+from unittest.mock import MagicMock
+from core.api import APIClient, APIRateLimitError
 
 
 def _make_client():
-    return APIClient(api_key="sk-test")
+    return APIClient(api_key="sk_test")
 
 
-def test_transcribe_default_model_and_params(mock_openai, tmp_path):
+def test_transcribe_default_model_and_params(mock_elevenlabs, tmp_path):
     wav = tmp_path / "a.wav"
     wav.write_bytes(b"RIFFfake")
     client = _make_client()
@@ -14,39 +15,42 @@ def test_transcribe_default_model_and_params(mock_openai, tmp_path):
     out = client.transcribe(str(wav), language="en", prompt="kubectl Next.js")
 
     assert out == "hello world"
-    call = mock_openai.audio.transcriptions.create.call_args
-    assert call.kwargs["model"] == "gpt-4o-mini-transcribe"
-    assert call.kwargs["response_format"] == "text"
-    assert call.kwargs["language"] == "en"
-    assert call.kwargs["prompt"] == "kubectl Next.js"
+    call = mock_elevenlabs.post.call_args
+    assert call.args[0] == "/speech-to-text"
+    data = call.kwargs["data"]
+    assert data["model_id"] == "scribe_v2"
+    assert data["tag_audio_events"] == "false"
+    assert data["language_code"] == "en"
+    assert data["keyterms"] == ["kubectl", "Next.js"]
 
 
-def test_transcribe_honors_explicit_model(mock_openai, tmp_path):
+def test_transcribe_honors_explicit_model(mock_elevenlabs, tmp_path):
     wav = tmp_path / "a.wav"
     wav.write_bytes(b"RIFFfake")
     client = _make_client()
 
-    client.transcribe(str(wav), model="whisper-1")
-    call = mock_openai.audio.transcriptions.create.call_args
-    assert call.kwargs["model"] == "whisper-1"
+    client.transcribe(str(wav), model="scribe_v1")
+    call = mock_elevenlabs.post.call_args
+    assert call.kwargs["data"]["model_id"] == "scribe_v1"
 
 
-def test_transcribe_omits_empty_prompt_and_language(mock_openai, tmp_path):
+def test_transcribe_omits_empty_prompt_and_language(mock_elevenlabs, tmp_path):
     wav = tmp_path / "a.wav"
     wav.write_bytes(b"RIFFfake")
     client = _make_client()
 
     client.transcribe(str(wav))
-    kwargs = mock_openai.audio.transcriptions.create.call_args.kwargs
-    assert "language" not in kwargs
-    assert "prompt" not in kwargs
+    data = mock_elevenlabs.post.call_args.kwargs["data"]
+    assert "language_code" not in data
+    assert "keyterms" not in data
 
 
-def test_chat_uses_gpt5nano_and_reasoning_effort(mock_openai):
+def test_chat_uses_gpt5nano_and_reasoning_effort(mock_elevenlabs):
     client = _make_client()
+    client._client = mock_elevenlabs
     out = client.chat([{"role": "user", "content": "hi"}])
     assert out == "cleaned text"
-    kwargs = mock_openai.chat.completions.create.call_args.kwargs
+    kwargs = mock_elevenlabs.chat.completions.create.call_args.kwargs
     assert kwargs["model"] == "gpt-5-nano"
     assert kwargs["reasoning_effort"] == "minimal"
     # Reasoning models: legacy sampling args must NOT be sent.
@@ -54,16 +58,18 @@ def test_chat_uses_gpt5nano_and_reasoning_effort(mock_openai):
     assert "max_tokens" not in kwargs
 
 
-def test_fix_grammar_default_model(mock_openai):
+def test_fix_grammar_default_model(mock_elevenlabs):
     client = _make_client()
+    client._client = mock_elevenlabs
     client.fix_grammar("teh cat")
-    assert mock_openai.chat.completions.create.call_args.kwargs["model"] == "gpt-5-nano"
+    assert mock_elevenlabs.chat.completions.create.call_args.kwargs["model"] == "gpt-5-nano"
 
 
-def test_translate_default_model(mock_openai):
+def test_translate_default_model(mock_elevenlabs):
     client = _make_client()
+    client._client = mock_elevenlabs
     client.translate("hello", target_language="es")
-    assert mock_openai.chat.completions.create.call_args.kwargs["model"] == "gpt-5-nano"
+    assert mock_elevenlabs.chat.completions.create.call_args.kwargs["model"] == "gpt-5-nano"
 
 
 def test_no_deprecated_model_referenced():
@@ -80,24 +86,28 @@ class _RateLimitError(Exception):
 _RateLimitError.__name__ = "RateLimitError"
 
 
-def test_transcribe_retries_then_succeeds(mock_openai, tmp_path, monkeypatch):
+def test_transcribe_retries_then_succeeds(mock_elevenlabs, tmp_path, monkeypatch):
     monkeypatch.setattr("core.api.time.sleep", lambda *_: None)  # no real waiting
     wav = tmp_path / "a.wav"
     wav.write_bytes(b"RIFFfake")
-    mock_openai.audio.transcriptions.create.side_effect = [
-        _RateLimitError(),
-        "second try",
+    second_resp = MagicMock()
+    second_resp.status_code = 200
+    second_resp.json.return_value = {"text": "second try"}
+    mock_elevenlabs.post.side_effect = [
+        APIRateLimitError("rate limited"),
+        second_resp,
     ]
-    client = APIClient(api_key="sk-test")
+    client = APIClient(api_key="sk_test")
     out = client.transcribe(str(wav))
     assert out == "second try"
-    assert mock_openai.audio.transcriptions.create.call_count == 2
+    assert mock_elevenlabs.post.call_count == 2
 
 
-def test_chat_gives_up_after_max_retries(mock_openai, monkeypatch):
+def test_chat_gives_up_after_max_retries(mock_elevenlabs, monkeypatch):
     monkeypatch.setattr("core.api.time.sleep", lambda *_: None)
-    mock_openai.chat.completions.create.side_effect = _RateLimitError()
-    client = APIClient(api_key="sk-test")
+    mock_elevenlabs.chat.completions.create.side_effect = _RateLimitError()
+    client = APIClient(api_key="sk_test")
+    client._client = mock_elevenlabs
     out = client.chat([{"role": "user", "content": "x"}])
     assert out is None
-    assert mock_openai.chat.completions.create.call_count == 3  # MAX_RETRIES
+    assert mock_elevenlabs.chat.completions.create.call_count == 3  # MAX_RETRIES

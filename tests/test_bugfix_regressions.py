@@ -149,10 +149,10 @@ def test_chat_none_content_returns_empty_string():
     fake_response = MagicMock()
     fake_response.choices = [fake_choice]
 
-    client = APIClient(api_key="sk-test")
-    fake_openai = MagicMock()
-    fake_openai.chat.completions.create.return_value = fake_response
-    client._client = fake_openai
+    client = APIClient(api_key="sk_test")
+    fake_backend = MagicMock()
+    fake_backend.chat.completions.create.return_value = fake_response
+    client._client = fake_backend
 
     result = client.chat([{"role": "user", "content": "hi"}])
     assert result == ""

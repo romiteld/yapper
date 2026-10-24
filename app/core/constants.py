@@ -94,7 +94,7 @@ HOTKEYS: List[str] = [
 
 # Output formatting modes for the faithful-formatting subsystem. Yapper is a
 # general-purpose dictation tool (agent prompts, docs, everyday messaging),
-# so the default keeps the user's own wording — it never paraphrases.
+# so the default keeps the user's own wording - it never paraphrases.
 # clean     = (default) fix only caps/punctuation + remove fillers; keep the
 #             user's exact words, tone, slang, and any jargon/code verbatim
 # polished  = opt-in heavier rewrite into tidy prose
@@ -111,9 +111,9 @@ ENGINES: List[str] = ["cloud", "local"]
 # Activation modes (consumed by hotkeys.py in Phase 1)
 ACTIVATION_MODES: List[str] = ["push_to_talk", "toggle", "wake_word"]
 
-# Cloud speech-to-text models (gpt-4o-mini-transcribe default; whisper-1 kept
-# for long-tail languages / timestamps).
-CLOUD_STT_MODELS: List[str] = ["gpt-4o-mini-transcribe", "whisper-1"]
+# Cloud speech-to-text models (scribe_v2 default; scribe_v1 kept
+# for backward compatibility).
+CLOUD_STT_MODELS: List[str] = ["scribe_v2", "scribe_v1"]
 
 # Local on-device model sizes (mlx-whisper / faster-whisper).
 LOCAL_STT_MODELS: List[str] = ["tiny", "base", "small", "medium", "large-v3"]
@@ -132,7 +132,7 @@ DEFAULT_SETTINGS: Dict[str, any] = {
 
     # Engine & models (Phase 2)
     "engine": "cloud",                            # cloud | local
-    "cloud_stt_model": "gpt-4o-mini-transcribe",  # or whisper-1
+    "cloud_stt_model": "scribe_v2",               # or scribe_v1
     "local_stt_model": "base",                    # mlx/faster-whisper size
     "text_model": "gpt-5-nano",                   # post-processing/translation
 
@@ -179,7 +179,7 @@ DEFAULT_SETTINGS: Dict[str, any] = {
 # Schema for settings validation
 # Format: key -> (type, validator_func_or_None, description)
 SETTINGS_SCHEMA: Dict[str, tuple] = {
-    "api_key": (str, None, "OpenAI API key"),
+    "api_key": (str, None, "ElevenLabs API key"),
     "engine": (str, lambda x: x in ENGINES, "Transcription engine"),
     "cloud_stt_model": (str, lambda x: x in CLOUD_STT_MODELS, "Cloud STT model"),
     "local_stt_model": (str, lambda x: x in LOCAL_STT_MODELS, "Local STT model"),

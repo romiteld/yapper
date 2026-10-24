@@ -107,7 +107,7 @@ class SetupWizard(QWidget):
                 "Press Next to configure your setup.",
                 objectName="Muted"))
         elif name == "Connect":
-            lay.addWidget(QLabel("Paste your OpenAI API key:", objectName="Muted"))
+            lay.addWidget(QLabel("Paste your ElevenLabs API key:", objectName="Muted"))
             self._api_edit = QLineEdit()
             self._api_edit.setEchoMode(QLineEdit.EchoMode.Password)
             self._api_edit.setText(self.settings.get("api_key", ""))

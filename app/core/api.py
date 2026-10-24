@@ -1,14 +1,17 @@
 """
 Yapper API Client
 =================
-OpenAI API client with retry logic and error handling.
+ElevenLabs Speech-to-Text API client with retry logic and error handling.
 
 © 2026 Cloudelipute
 """
 
+import re
 import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, TypeVar
+
+import httpx
 
 from .logger import get_logger
 
@@ -34,14 +37,14 @@ class APIRateLimitError(APIError):
 
 class APIClient:
     """
-    OpenAI API client with automatic retry logic.
+    ElevenLabs API client with automatic retry logic.
 
     Example:
-        client = APIClient(api_key="sk-...")
+        client = APIClient(api_key="sk_...")
         text = client.transcribe("audio.wav", language="en")
-        response = client.chat([{"role": "user", "content": "Hello"}])
     """
 
+    BASE_URL = "https://api.elevenlabs.io/v1"
     DEFAULT_TIMEOUT = 30  # seconds
     MAX_RETRIES = 3
     RETRY_DELAYS = [1, 2, 4]  # exponential backoff in seconds
@@ -56,7 +59,7 @@ class APIClient:
         Initialize the API client.
 
         Args:
-            api_key: OpenAI API key.
+            api_key: ElevenLabs API key.
             timeout: Request timeout in seconds.
             max_retries: Maximum number of retry attempts.
         """
@@ -65,18 +68,14 @@ class APIClient:
         self._max_retries = max_retries
         self._client = None
 
-    def _get_client(self):
-        """Lazily initialize the OpenAI client."""
+    def _get_client(self) -> httpx.Client:
+        """Lazily initialize the ElevenLabs HTTP client."""
         if self._client is None:
-            try:
-                from openai import OpenAI
-                self._client = OpenAI(
-                    api_key=self._api_key,
-                    timeout=self._timeout
-                )
-            except ImportError:
-                logger.error("OpenAI package not installed. Install with: pip install openai")
-                raise APIError("OpenAI package not installed")
+            self._client = httpx.Client(
+                base_url=self.BASE_URL,
+                headers={"xi-api-key": self._api_key},
+                timeout=self._timeout,
+            )
         return self._client
 
     def _with_retry(
@@ -94,8 +93,6 @@ class APIClient:
         Returns:
             Operation result or None on failure.
         """
-        last_error = None
-
         for attempt in range(self._max_retries):
             try:
                 result = operation()
@@ -104,7 +101,6 @@ class APIClient:
                 return result
 
             except Exception as e:
-                last_error = e
                 error_type = type(e).__name__
 
                 # Check if error is retryable
@@ -125,65 +121,108 @@ class APIClient:
 
     def _is_retryable_error(self, error: Exception) -> bool:
         """Check if an error is retryable."""
-        error_type = type(error).__name__
+        if isinstance(error, (APIRateLimitError, APIConnectionError, httpx.TransportError, httpx.TimeoutException)):
+            return True
 
-        # OpenAI specific errors
+        error_type = type(error).__name__
         retryable_errors = [
             "RateLimitError",
+            "APIRateLimitError",
             "APIConnectionError",
             "APITimeoutError",
             "InternalServerError",
             "ServiceUnavailableError",
+            "ConnectError",
+            "ReadTimeout",
+            "WriteTimeout",
+            "PoolTimeout",
         ]
 
         if error_type in retryable_errors:
             return True
 
         # Check for network errors
-        if "connection" in str(error).lower() or "timeout" in str(error).lower():
+        msg = str(error).lower()
+        if "connection" in msg or "timeout" in msg or "rate limit" in msg or "429" in msg:
             return True
 
         return False
+
+    @staticmethod
+    def _parse_keyterms(prompt: str) -> List[str]:
+        """Convert a vocabulary prompt string into ElevenLabs Scribe v2 keyterms."""
+        if not prompt or not prompt.strip():
+            return []
+        if "," in prompt:
+            raw_terms = [t.strip() for t in prompt.split(",")]
+        else:
+            raw_terms = [t.strip() for t in re.split(r"\s+", prompt.strip())]
+        terms: List[str] = []
+        for term in raw_terms:
+            if term and len(term) <= 50 and len(term.split()) <= 5 and term not in terms:
+                terms.append(term)
+            if len(terms) >= 100:
+                break
+        return terms
 
     def transcribe(
         self,
         audio_path: str,
         language: Optional[str] = None,
-        model: str = "gpt-4o-mini-transcribe",
+        model: str = "scribe_v2",
         prompt: Optional[str] = None,
     ) -> Optional[str]:
         """
-        Transcribe audio file to text.
+        Transcribe audio file to text via ElevenLabs Scribe.
 
         Args:
             audio_path: Path to audio file.
             language: Optional language hint (ISO code).
-            model: STT model (default gpt-4o-mini-transcribe; whisper-1 selectable).
-            prompt: Optional vocabulary bias passed to the model.
+            model: STT model (default scribe_v2; scribe_v1 selectable).
+            prompt: Optional vocabulary bias passed as keyterms on scribe_v2.
 
         Returns:
             Transcribed text or None on failure.
         """
         def _do_transcribe() -> str:
             client = self._get_client()
+            path_obj = Path(audio_path)
 
-            with open(audio_path, "rb") as audio_file:
-                kwargs: Dict[str, Any] = {
-                    "model": model,
-                    "file": audio_file,
-                    "response_format": "text",
+            with open(path_obj, "rb") as audio_file:
+                data: Dict[str, Any] = {
+                    "model_id": model,
+                    "tag_audio_events": "false",
                 }
                 if language:
-                    kwargs["language"] = language
-                if prompt:
-                    kwargs["prompt"] = prompt
+                    data["language_code"] = language
+                if prompt and model == "scribe_v2":
+                    keyterms = self._parse_keyterms(prompt)
+                    if keyterms:
+                        data["keyterms"] = keyterms
 
-                result = client.audio.transcriptions.create(**kwargs)
+                files = {
+                    "file": (path_obj.name, audio_file, "audio/wav"),
+                }
 
-                # response_format='text' returns a plain str; guard for objects.
-                if isinstance(result, str):
-                    return result.strip()
-                return result.text.strip()
+                response = client.post(
+                    "/speech-to-text",
+                    data=data,
+                    files=files,
+                )
+
+                if response.status_code == 429:
+                    raise APIRateLimitError(f"HTTP 429: {response.text}")
+                if response.status_code >= 500:
+                    raise APIConnectionError(f"HTTP {response.status_code}: {response.text}")
+                if response.status_code >= 400:
+                    raise APIError(f"HTTP {response.status_code}: {response.text}")
+
+                payload = response.json()
+                if isinstance(payload, str):
+                    return payload.strip()
+                if isinstance(payload, dict):
+                    return str(payload.get("text", "")).strip()
+                return str(payload).strip()
 
         logger.debug(f"Transcribing: {audio_path} (model={model})")
         text = self._with_retry(_do_transcribe, "Transcription")
@@ -200,19 +239,18 @@ class APIClient:
         reasoning_effort: str = "minimal",
     ) -> Optional[str]:
         """
-        Send a chat completion request to a reasoning model.
+        Optional chat completion hook for post-processing.
 
-        Args:
-            messages: List of message dicts.
-            model: Text model (default gpt-5-nano).
-            reasoning_effort: 'minimal' for fast, low-latency post-processing.
-
-        Returns:
-            Response text or None on failure.
+        When backed by an injected chat client (e.g. in tests), delegates to
+        ``_client.chat.completions.create``. When backed only by the ElevenLabs
+        STT HTTP client, returns None so callers use deterministic formatting.
         """
+        if self._client is None or not hasattr(self._client, "chat"):
+            logger.debug("Chat completion unavailable on STT-only client; using deterministic path")
+            return None
+
         def _do_chat() -> str:
-            client = self._get_client()
-            response = client.chat.completions.create(
+            response = self._client.chat.completions.create(
                 model=model,
                 messages=messages,
                 reasoning_effort=reasoning_effort,
@@ -236,19 +274,10 @@ class APIClient:
         model: str = "gpt-5-nano",
     ) -> Optional[str]:
         """
-        Translate text to target language.
-
-        Args:
-            text: Text to translate.
-            target_language: Target language name or code.
-            model: Model to use for translation.
-
-        Returns:
-            Translated text or original text on failure.
+        Translate text to target language if a chat backend is available.
         """
         from .constants import LANGUAGE_CODES
 
-        # Get full language name
         lang_name = LANGUAGE_CODES.get(target_language, target_language)
 
         messages = [
@@ -266,7 +295,7 @@ class APIClient:
         if result:
             return result
 
-        logger.warning("Translation failed, returning original text")
+        logger.warning("Translation unavailable or failed, returning original text")
         return text
 
     def fix_grammar(
@@ -275,14 +304,7 @@ class APIClient:
         model: str = "gpt-5-nano",
     ) -> Optional[str]:
         """
-        Fix grammar and punctuation in text.
-
-        Args:
-            text: Text to correct.
-            model: Model to use.
-
-        Returns:
-            Corrected text or original text on failure.
+        Fix grammar and punctuation in text if a chat backend is available.
         """
         messages = [
             {
@@ -302,16 +324,15 @@ class APIClient:
         if result:
             return result
 
-        logger.warning("Grammar correction failed, returning original text")
+        logger.warning("Grammar correction unavailable or failed, returning original text")
         return text
 
     def is_valid(self) -> bool:
-        """Check if API key is valid by making a test request."""
+        """Check if ElevenLabs API key is valid by making a test request."""
         try:
             client = self._get_client()
-            # Make a minimal request to verify the key
-            client.models.list()
-            return True
+            resp = client.get("/user")
+            return resp.status_code == 200
         except Exception as e:
             logger.error(f"API key validation failed: {e}")
             return False

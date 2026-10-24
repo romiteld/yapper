@@ -33,7 +33,7 @@ def test_cloud_engine_is_engine():
 def test_cloud_engine_delegates_to_api_client():
     api = MagicMock()
     api.transcribe.return_value = "hi there"
-    eng = CloudEngine(api_client=api, model="gpt-4o-mini-transcribe")
+    eng = CloudEngine(api_client=api, model="scribe_v2")
 
     out = eng.transcribe("/tmp/x.wav", language="en", prompt="kubectl")
 
@@ -41,7 +41,7 @@ def test_cloud_engine_delegates_to_api_client():
     api.transcribe.assert_called_once_with(
         "/tmp/x.wav",
         language="en",
-        model="gpt-4o-mini-transcribe",
+        model="scribe_v2",
         prompt="kubectl",
     )
 
@@ -51,7 +51,7 @@ def test_cloud_engine_default_model():
     api.transcribe.return_value = "ok"
     eng = CloudEngine(api_client=api)
     eng.transcribe("/tmp/x.wav")
-    assert api.transcribe.call_args.kwargs["model"] == "gpt-4o-mini-transcribe"
+    assert api.transcribe.call_args.kwargs["model"] == "scribe_v2"
 
 
 from core.engines.local import LocalEngine, LocalEngineUnavailable
@@ -101,17 +101,17 @@ from core.engines import get_engine
 
 
 def test_get_engine_cloud_default(settings_factory):
-    s = settings_factory(api_key="sk-x", engine="cloud")
+    s = settings_factory(api_key="sk_x", engine="cloud")
     eng = get_engine(s)
     assert isinstance(eng, CloudEngine)
-    assert eng._model == "gpt-4o-mini-transcribe"
+    assert eng._model == "scribe_v2"
 
 
 def test_get_engine_cloud_honors_model(settings_factory):
-    s = settings_factory(api_key="sk-x", engine="cloud", cloud_stt_model="whisper-1")
+    s = settings_factory(api_key="sk_x", engine="cloud", cloud_stt_model="scribe_v1")
     eng = get_engine(s)
     assert isinstance(eng, CloudEngine)
-    assert eng._model == "whisper-1"
+    assert eng._model == "scribe_v1"
 
 
 def test_get_engine_local(settings_factory):

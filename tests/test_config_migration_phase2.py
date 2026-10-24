@@ -12,7 +12,7 @@ from core.constants import (
 
 def test_new_keys_have_defaults():
     assert DEFAULT_SETTINGS["engine"] == "cloud"
-    assert DEFAULT_SETTINGS["cloud_stt_model"] == "gpt-4o-mini-transcribe"
+    assert DEFAULT_SETTINGS["cloud_stt_model"] == "scribe_v2"
     assert DEFAULT_SETTINGS["local_stt_model"] == "base"
     assert DEFAULT_SETTINGS["text_model"] == "gpt-5-nano"
 
@@ -24,8 +24,8 @@ def test_new_keys_in_schema():
 
 def test_option_lists_present():
     assert "cloud" in ENGINES and "local" in ENGINES
-    assert "gpt-4o-mini-transcribe" in CLOUD_STT_MODELS
-    assert "whisper-1" in CLOUD_STT_MODELS
+    assert "scribe_v2" in CLOUD_STT_MODELS
+    assert "scribe_v1" in CLOUD_STT_MODELS
     assert "gpt-5-nano" in TEXT_MODELS
     assert "gpt-4.1-nano" not in TEXT_MODELS  # deprecated, must be gone
 
@@ -40,7 +40,7 @@ def test_engine_schema_rejects_bad_value():
 def test_legacy_file_backfills_new_keys(tmp_path):
     from core.config import Settings, set_settings_path
     legacy = {
-        "api_key": "sk-legacy",
+        "api_key": "sk_legacy",
         "hotkey": "f8",
         "translate_to": "",
         "fix_grammar": True,
@@ -54,11 +54,20 @@ def test_legacy_file_backfills_new_keys(tmp_path):
 
     # New keys present with sane defaults.
     assert s.get("engine") == "cloud"
-    assert s.get("cloud_stt_model") == "gpt-4o-mini-transcribe"
+    assert s.get("cloud_stt_model") == "scribe_v2"
     assert s.get("text_model") == "gpt-5-nano"
     # Legacy values preserved.
-    assert s.get("api_key") == "sk-legacy"
+    assert s.get("api_key") == "sk_legacy"
     assert s.get("always_listening") is True
+
+
+def test_legacy_stt_model_migrates_to_scribe_v2(tmp_path):
+    from core.config import Settings
+    for old_model in ("gpt-4o-mini-transcribe", "whisper-1"):
+        p = tmp_path / f"settings_{old_model}.json"
+        p.write_text(json.dumps({"api_key": "sk_x", "cloud_stt_model": old_model}), encoding="utf-8")
+        s = Settings(p).load()
+        assert s.get("cloud_stt_model") == "scribe_v2"
 
 
 def test_migrate_is_idempotent(tmp_path):
